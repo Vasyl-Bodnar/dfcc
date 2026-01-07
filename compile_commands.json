@@ -1,0 +1,5 @@
+{
+    "directory": "/home/vasyl/Projects/C/dfcc",
+    "command": "gcc -I/usr/local/include/got -c src/main.c",
+    "file": "src/main.c"
+}
