@@ -144,6 +144,8 @@ typedef struct LexerOutput {
 
 LexerOutput lex(const char *input, size_t len);
 
+void delete_lexer_out(LexerOutput lexer_out);
+
 void print_lexes(const Vector *lexes);
 
 void print_ids(const char *input, const Vector *ids);

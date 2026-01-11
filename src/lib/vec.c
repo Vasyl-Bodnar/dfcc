@@ -1,14 +1,5 @@
 #include "vec.h"
 
-/*
-typedef struct Vector {
-    uint64_t value_size;
-    uint64_t length;
-    uint64_t capacity;
-    uint8_t v[];
-} Vector;
-*/
-
 Vector *create_vec(size_t len, size_t value_size) {
     Vector *v = malloc(sizeof(Vector) + len * value_size);
     if (!v) {
@@ -24,13 +15,14 @@ Vector *create_vec(size_t len, size_t value_size) {
 uint32_t push_elem_vec(Vector **v, const void *value) {
     if ((*v)->length >= (*v)->capacity) {
         size_t new_capacity =
-            ((((*v)->capacity < 4) ? 3 : (*v)->capacity) * 3) / 2;
+            ((*v)->capacity < 4) ? 4 : (((*v)->capacity * 3) / 2);
         Vector *new_v =
             realloc(*v, sizeof(Vector) + new_capacity * (*v)->value_size);
         if (!new_v) {
             return 0;
         } else {
             *v = new_v;
+            (*v)->capacity = new_capacity;
         }
     }
 

@@ -24,6 +24,7 @@ int main(int argc, char *argv[]) {
 
     print_ids(buf, lexer.ids);
 
+    delete_lexer_out(lexer);
     free(buf);
     fclose(file);
     return 0;
