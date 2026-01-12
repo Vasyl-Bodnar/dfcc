@@ -8,10 +8,12 @@
 
 enum lex_type {
     Invalid = 0,
+    Eof,
     Keyword,
     Identifier,
     String,
     AdjacentString,
+    MacroToken,
     Constant,
     LBracket, // Also <:
     RBracket, // Also :>
@@ -62,6 +64,12 @@ enum lex_type {
     Comma,
     Hash,     // Also %:
     HashHash, // Also %:%:
+};
+
+// TODO: Expand for better errors
+enum invalid_type {
+    Ok = 0,
+    IllegalChar,
 };
 
 enum lex_keyword {
@@ -122,6 +130,26 @@ enum lex_keyword {
     KEY_COUNT,
 };
 
+enum macro_type {
+    Undefined = 0,
+    Include,
+    Define,
+    DefineFun,
+    If,
+    IfDefined,
+    IfNotDefined,
+    Else,
+    ElseIf,
+    ElseIfDefined,
+    ElseIfNotDefined,
+    Line,
+    LineFile,
+    Embed,
+    Error,
+    Warning,
+    Pragma,
+};
+
 typedef struct Span {
     size_t start;
     size_t len;
@@ -132,22 +160,79 @@ typedef struct Lex {
     Span span;
     union {
         enum lex_keyword key;
+        enum macro_type macro;
+        enum invalid_type invalid;
         size_t id;
         uint64_t constant;
     };
 } Lex;
 
-typedef struct LexerOutput {
-    Vector *lexes;
-    Vector *ids;
-} LexerOutput;
+// TODO: All this macro stuff should belong to preprocessor not lexer
 
-LexerOutput lex(const char *input, size_t len);
+enum include_type {
+    Hheader,
+    Qheader,
+};
 
-void delete_lexer_out(LexerOutput lexer_out);
+enum macro_lex_type {
+    MacroConstant,
+    MacroIdentifier,
+    MacroDefinedIdentifier,
+    MacroEtEt,
+    MacroPipePipe,
+    MacroExclamation,
+    MacroEqualEqual,
+    MacroExclamationEqual,
+    MacroLeft,
+    MacroLeftEqual,
+    MacroRight,
+    MacroRightEqual,
+};
 
-void print_lexes(const Vector *lexes);
+typedef Vector Ids;
+typedef Vector Lexes;
 
-void print_ids(const char *input, const Vector *ids);
+typedef struct MacroLex {
+    enum macro_lex_type type;
+    union {
+        size_t id;
+        uint64_t constant;
+    };
+} MacroLex;
+
+typedef Vector MacroLexes;
+
+typedef struct Macro {
+    enum macro_type type;
+    union {
+        struct {
+            size_t id;
+            Span span;
+            Ids *args;
+        } def;
+        struct {
+            Span span;
+            MacroLexes *lexes;
+        } cond;
+        struct {
+            enum include_type incl_type;
+            size_t id;
+        } incl;
+        struct {
+            size_t lineno;
+            size_t id;
+        } line;
+        size_t defcond;
+        size_t str;
+        size_t pragma; // TODO: consider implementing pragmas
+    };
+} Macro;
+
+// Last character must be a newline
+Lex lex_next(const char *input, size_t len, size_t *idx, Ids **ids);
+
+void print_lexes(const Lexes *lexes);
+
+void print_ids(const char *input, const Ids *ids);
 
 #endif // LEXER_H_

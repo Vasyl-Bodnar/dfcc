@@ -1,5 +1,4 @@
 #include "lexer.h"
-#include "vec.h"
 
 uint8_t key_len_table[KEY_COUNT] = {
     [KEY_alignas] = 7,
@@ -97,7 +96,7 @@ int punctuation(char c) {
 int space(char c) { return c == ' ' || c == '\n' || c == '\t' || c == '\r'; }
 
 // Check if this id already exists, else push it on
-size_t search_id_table(const char *input, Span span, Vector **id_table) {
+size_t search_id_table(const char *input, Span span, Ids **id_table) {
     for (size_t i = 0; i < (*id_table)->length; i++) {
         Span id = ((Span *)(*id_table)->v)[i];
         if (span.len == id.len &&
@@ -107,171 +106,6 @@ size_t search_id_table(const char *input, Span span, Vector **id_table) {
     }
     push_elem_vec(id_table, &span);
     return (*id_table)->length - 1;
-}
-
-Lex punctuator(const char *input, size_t idx, size_t limit) {
-    switch (input[idx]) {
-    case '[':
-        return (Lex){.type = LBracket, .span = {.start = idx, .len = 1}};
-    case ']':
-        return (Lex){.type = RBracket, .span = {.start = idx, .len = 1}};
-    case '(':
-        return (Lex){.type = LParen, .span = {.start = idx, .len = 1}};
-    case ')':
-        return (Lex){.type = RParen, .span = {.start = idx, .len = 1}};
-    case '{':
-        return (Lex){.type = LSquigly, .span = {.start = idx, .len = 1}};
-    case '}':
-        return (Lex){.type = RSquigly, .span = {.start = idx, .len = 1}};
-    case '.':
-        if (limit > 2 && input[idx + 1] == '.' && input[idx + 2] == '.') {
-            return (Lex){.type = DotDotDot, .span = {.start = idx, .len = 3}};
-        }
-        return (Lex){.type = Dot, .span = {.start = idx, .len = 1}};
-    case '&':
-        if (limit > 1) {
-            if (input[idx + 1] == '&')
-                return (Lex){.type = EtEt, .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '=')
-                return (Lex){.type = EtEqual, .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Et, .span = {.start = idx, .len = 1}};
-    case '*':
-        if (limit > 1 && input[idx + 1] == '=') {
-            return (Lex){.type = StarEqual, .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Star, .span = {.start = idx, .len = 1}};
-    case '+':
-        if (limit > 1) {
-            if (input[idx + 1] == '+')
-                return (Lex){.type = PlusPlus,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '=')
-                return (Lex){.type = PlusEqual,
-                             .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Plus, .span = {.start = idx, .len = 1}};
-    case '-':
-        if (limit > 1) {
-            if (input[idx + 1] == '>')
-                return (Lex){.type = Arrow, .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '-')
-                return (Lex){.type = MinusMinus,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '=')
-                return (Lex){.type = MinusEqual,
-                             .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Minus, .span = {.start = idx, .len = 1}};
-    case '~':
-        return (Lex){.type = Tilde, .span = {.start = idx, .len = 1}};
-    case '!':
-        if (limit > 1 && input[idx + 1] == '=') {
-            return (Lex){.type = ExclamationEqual,
-                         .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Exclamation, .span = {.start = idx, .len = 1}};
-    case '/':
-        if (limit > 1 && input[idx + 1] == '=') {
-            return (Lex){.type = SlashEqual, .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Slash, .span = {.start = idx, .len = 1}};
-    case '%':
-        if (limit > 3 && input[idx + 1] == ':' && input[idx + 2] == '%' &&
-            input[idx + 3] == ':') {
-            return (Lex){.type = HashHash, .span = {.start = idx, .len = 4}};
-        }
-        if (limit > 1) {
-            if (input[idx + 1] == '=')
-                return (Lex){.type = PercentEqual,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '>')
-                return (Lex){.type = RSquigly,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == ':')
-                return (Lex){.type = Hash, .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Percent, .span = {.start = idx, .len = 1}};
-    case '<':
-        if (limit > 2 && input[idx + 1] == '<') {
-            if (input[idx + 2] == '=')
-                return (Lex){.type = LeftLeftEqual,
-                             .span = {.start = idx, .len = 3}};
-            return (Lex){.type = LeftLeft, .span = {.start = idx, .len = 2}};
-        } else if (limit > 1) {
-            if (input[idx + 1] == '<')
-                return (Lex){.type = LeftLeft,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '=')
-                return (Lex){.type = LeftEqual,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == ':')
-                return (Lex){.type = LBracket,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '%')
-                return (Lex){.type = LSquigly,
-                             .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Left, .span = {.start = idx, .len = 1}};
-    case '>':
-        if (limit > 2 && input[idx + 1] == '>') {
-            if (input[idx + 2] == '=')
-                return (Lex){.type = RightRightEqual,
-                             .span = {.start = idx, .len = 3}};
-            return (Lex){.type = RightRight, .span = {.start = idx, .len = 2}};
-        } else if (limit > 1) {
-            if (input[idx + 1] == '>')
-                return (Lex){.type = RightRight,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '=')
-                return (Lex){.type = RightEqual,
-                             .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Right, .span = {.start = idx, .len = 1}};
-    case '^':
-        if (limit > 1 && input[idx + 1] == '=') {
-            return (Lex){.type = CaretEqual, .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Caret, .span = {.start = idx, .len = 1}};
-    case '|':
-        if (limit > 1) {
-            if (input[idx + 1] == '|')
-                return (Lex){.type = PipePipe,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '=')
-                return (Lex){.type = PipeEqual,
-                             .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Pipe, .span = {.start = idx, .len = 1}};
-    case '?':
-        return (Lex){.type = Question, .span = {.start = idx, .len = 1}};
-    case ':':
-        if (limit > 1) {
-            if (input[idx + 1] == ':')
-                return (Lex){.type = ColonColon,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '>')
-                return (Lex){.type = RBracket,
-                             .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Colon, .span = {.start = idx, .len = 1}};
-    case ';':
-        return (Lex){.type = Semicolon, .span = {.start = idx, .len = 1}};
-    case '=':
-        if (limit > 1 && input[idx + 1] == '=') {
-            return (Lex){.type = EqualEqual, .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Equal, .span = {.start = idx, .len = 1}};
-    case ',':
-        return (Lex){.type = Comma, .span = {.start = idx, .len = 1}};
-    case '#':
-        if (limit > 1 && input[idx + 1] == '#') {
-            return (Lex){.type = HashHash, .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Hash, .span = {.start = idx, .len = 1}};
-    default:
-        return (Lex){0};
-    }
 }
 
 Lex check_keyword(const char *input, Span span) {
@@ -509,6 +343,7 @@ Lex check_keyword(const char *input, Span span) {
     return (Lex){0};
 }
 
+// MINOR: Possibly handle XID_Start and XID_Continue
 Lex keyword_or_id(const char *input, size_t idx, size_t limit,
                   Vector **id_table) {
     if (nondigit(input[idx])) {
@@ -530,6 +365,218 @@ Lex keyword_or_id(const char *input, size_t idx, size_t limit,
     return (Lex){0};
 }
 
+Lex macro(const char *input, size_t idx, size_t limit, Vector **id_table) {
+    if (limit > 1) {
+        if (nondigit(input[idx + 1])) {
+            // Adds the id to id_table
+            Lex id = keyword_or_id(input, idx + 1, limit - 1, id_table);
+            if (id.type) {
+                if (id.type != Keyword) {
+                    if (!memcmp("define", input + id.span.start, id.span.len)) {
+                    } else if (!memcmp("include", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("if", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("ifdef", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("ifndef", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("else", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("elif", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("elif", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("elifdef", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("elifndef", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("endif", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("line", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("embed", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("error", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("warning", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("pragma", input + id.span.start,
+                                       id.span.len)) {
+                    } else if (!memcmp("undef", input + id.span.start,
+                                       id.span.len)) {
+                    }
+                }
+            }
+        } else if (input[idx + 1] == '#') {
+            return (Lex){.type = HashHash, .span = {.start = idx, .len = 2}};
+        }
+    }
+    return (Lex){.type = Hash, .span = {.start = idx, .len = 1}};
+}
+
+Lex punctuator(const char *input, size_t idx, size_t limit, Vector **id_table) {
+    switch (input[idx]) {
+    case '[':
+        return (Lex){.type = LBracket, .span = {.start = idx, .len = 1}};
+    case ']':
+        return (Lex){.type = RBracket, .span = {.start = idx, .len = 1}};
+    case '(':
+        return (Lex){.type = LParen, .span = {.start = idx, .len = 1}};
+    case ')':
+        return (Lex){.type = RParen, .span = {.start = idx, .len = 1}};
+    case '{':
+        return (Lex){.type = LSquigly, .span = {.start = idx, .len = 1}};
+    case '}':
+        return (Lex){.type = RSquigly, .span = {.start = idx, .len = 1}};
+    case '.':
+        if (limit > 2 && input[idx + 1] == '.' && input[idx + 2] == '.') {
+            return (Lex){.type = DotDotDot, .span = {.start = idx, .len = 3}};
+        }
+        return (Lex){.type = Dot, .span = {.start = idx, .len = 1}};
+    case '&':
+        if (limit > 1) {
+            if (input[idx + 1] == '&')
+                return (Lex){.type = EtEt, .span = {.start = idx, .len = 2}};
+            else if (input[idx + 1] == '=')
+                return (Lex){.type = EtEqual, .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = Et, .span = {.start = idx, .len = 1}};
+    case '*':
+        if (limit > 1 && input[idx + 1] == '=') {
+            return (Lex){.type = StarEqual, .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = Star, .span = {.start = idx, .len = 1}};
+    case '+':
+        if (limit > 1) {
+            if (input[idx + 1] == '+')
+                return (Lex){.type = PlusPlus,
+                             .span = {.start = idx, .len = 2}};
+            else if (input[idx + 1] == '=')
+                return (Lex){.type = PlusEqual,
+                             .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = Plus, .span = {.start = idx, .len = 1}};
+    case '-':
+        if (limit > 1) {
+            if (input[idx + 1] == '>')
+                return (Lex){.type = Arrow, .span = {.start = idx, .len = 2}};
+            else if (input[idx + 1] == '-')
+                return (Lex){.type = MinusMinus,
+                             .span = {.start = idx, .len = 2}};
+            else if (input[idx + 1] == '=')
+                return (Lex){.type = MinusEqual,
+                             .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = Minus, .span = {.start = idx, .len = 1}};
+    case '~':
+        return (Lex){.type = Tilde, .span = {.start = idx, .len = 1}};
+    case '!':
+        if (limit > 1 && input[idx + 1] == '=') {
+            return (Lex){.type = ExclamationEqual,
+                         .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = Exclamation, .span = {.start = idx, .len = 1}};
+    case '/':
+        if (limit > 1 && input[idx + 1] == '=') {
+            return (Lex){.type = SlashEqual, .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = Slash, .span = {.start = idx, .len = 1}};
+    case '%':
+        if (limit > 3 && input[idx + 1] == ':' && input[idx + 2] == '%' &&
+            input[idx + 3] == ':') {
+            return macro(input, idx, limit, id_table);
+        }
+        if (limit > 1) {
+            if (input[idx + 1] == '=')
+                return (Lex){.type = PercentEqual,
+                             .span = {.start = idx, .len = 2}};
+            else if (input[idx + 1] == '>')
+                return (Lex){.type = RSquigly,
+                             .span = {.start = idx, .len = 2}};
+            else if (input[idx + 1] == ':')
+                return macro(input, idx, limit, id_table);
+        }
+        return (Lex){.type = Percent, .span = {.start = idx, .len = 1}};
+    case '<':
+        if (limit > 2 && input[idx + 1] == '<') {
+            if (input[idx + 2] == '=')
+                return (Lex){.type = LeftLeftEqual,
+                             .span = {.start = idx, .len = 3}};
+            return (Lex){.type = LeftLeft, .span = {.start = idx, .len = 2}};
+        } else if (limit > 1) {
+            if (input[idx + 1] == '<')
+                return (Lex){.type = LeftLeft,
+                             .span = {.start = idx, .len = 2}};
+            else if (input[idx + 1] == '=')
+                return (Lex){.type = LeftEqual,
+                             .span = {.start = idx, .len = 2}};
+            else if (input[idx + 1] == ':')
+                return (Lex){.type = LBracket,
+                             .span = {.start = idx, .len = 2}};
+            else if (input[idx + 1] == '%')
+                return (Lex){.type = LSquigly,
+                             .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = Left, .span = {.start = idx, .len = 1}};
+    case '>':
+        if (limit > 2 && input[idx + 1] == '>') {
+            if (input[idx + 2] == '=')
+                return (Lex){.type = RightRightEqual,
+                             .span = {.start = idx, .len = 3}};
+            return (Lex){.type = RightRight, .span = {.start = idx, .len = 2}};
+        } else if (limit > 1) {
+            if (input[idx + 1] == '>')
+                return (Lex){.type = RightRight,
+                             .span = {.start = idx, .len = 2}};
+            else if (input[idx + 1] == '=')
+                return (Lex){.type = RightEqual,
+                             .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = Right, .span = {.start = idx, .len = 1}};
+    case '^':
+        if (limit > 1 && input[idx + 1] == '=') {
+            return (Lex){.type = CaretEqual, .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = Caret, .span = {.start = idx, .len = 1}};
+    case '|':
+        if (limit > 1) {
+            if (input[idx + 1] == '|')
+                return (Lex){.type = PipePipe,
+                             .span = {.start = idx, .len = 2}};
+            else if (input[idx + 1] == '=')
+                return (Lex){.type = PipeEqual,
+                             .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = Pipe, .span = {.start = idx, .len = 1}};
+    case '?':
+        return (Lex){.type = Question, .span = {.start = idx, .len = 1}};
+    case ':':
+        if (limit > 1) {
+            if (input[idx + 1] == ':')
+                return (Lex){.type = ColonColon,
+                             .span = {.start = idx, .len = 2}};
+            else if (input[idx + 1] == '>')
+                return (Lex){.type = RBracket,
+                             .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = Colon, .span = {.start = idx, .len = 1}};
+    case ';':
+        return (Lex){.type = Semicolon, .span = {.start = idx, .len = 1}};
+    case '=':
+        if (limit > 1 && input[idx + 1] == '=') {
+            return (Lex){.type = EqualEqual, .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = Equal, .span = {.start = idx, .len = 1}};
+    case ',':
+        return (Lex){.type = Comma, .span = {.start = idx, .len = 1}};
+    case '#':
+        return macro(input, idx, limit, id_table);
+    default:
+        return (Lex){0};
+    }
+}
+
 Lex num_constant(const char *input, size_t idx, size_t limit, Span span,
                  uint64_t base, int (*xdigit)(char c),
                  uint64_t (*xacquire)(char c)) {
@@ -549,6 +596,7 @@ Lex num_constant(const char *input, size_t idx, size_t limit, Span span,
     return (Lex){.type = Constant, .span = span, .constant = constant};
 }
 
+// TODO: Chars, floats, suffixes
 Lex constant(const char *input, size_t idx, size_t limit) {
     if (nonzero(input[idx])) {
         return num_constant(input, idx, limit, (Span){idx, 1}, 10, digit,
@@ -574,7 +622,7 @@ Lex constant(const char *input, size_t idx, size_t limit) {
     return (Lex){0};
 }
 
-// TODO: Handle u8, u, U, L
+// TODO: Handle u8, u, U, L, also for chars
 Lex string(const char *input, size_t idx, size_t limit, Vector **id_table) {
     if (input[idx] == '"') {
         Span span = {idx, 1};
@@ -592,63 +640,59 @@ Lex string(const char *input, size_t idx, size_t limit, Vector **id_table) {
     return (Lex){0};
 }
 
-// MINOR: Possibly handle XID_Start and XID_Continue
-LexerOutput lex(const char *input, size_t len) {
-    // MINOR: Find a good starting guess, maybe Hello World program?
-    Vector *lexes = create_vec(16, sizeof(Lex));
-    Vector *id_table = create_vec(8, sizeof(Span));
-
+Lex lex_next(const char *input, size_t len, size_t *idx, Ids **id_table) {
     Lex lexed;
-    size_t i = 0;
-    while (i < len) {
-        lexed = keyword_or_id(input, i, len - i, &id_table);
-        if (lexed.type)
-            goto Lex_success;
-
-        lexed = constant(input, i, len - i);
-        if (lexed.type)
-            goto Lex_success;
-
-        lexed = string(input, i, len - i, &id_table);
-        if (lexed.type)
-            goto Lex_success;
-
-        lexed = punctuator(input, i, len - i);
-        if (lexed.type)
-            goto Lex_success;
-
-        if (!space(input[i])) {
-            puts("Skipping unknown!");
+    while (*idx < len) {
+        lexed = keyword_or_id(input, *idx, len - *idx, id_table);
+        if (lexed.type || lexed.invalid) {
+            *idx += lexed.span.len;
+            return lexed;
         }
-        i += 1;
-        continue;
 
-    Lex_success:
-        i += lexed.span.len;
-        push_elem_vec(&lexes, &lexed);
+        lexed = constant(input, *idx, len - *idx);
+        if (lexed.type || lexed.invalid) {
+            *idx += lexed.span.len;
+            return lexed;
+        }
+
+        lexed = string(input, *idx, len - *idx, id_table);
+        if (lexed.type || lexed.invalid) {
+            *idx += lexed.span.len;
+            return lexed;
+        }
+
+        lexed = punctuator(input, *idx, len - *idx, id_table);
+        if (lexed.type || lexed.invalid) {
+            *idx += lexed.span.len;
+            return lexed;
+        }
+
+        if (!space(input[*idx])) {
+            return (Lex){
+                .type = Invalid, .span = {*idx, 1}, .invalid = IllegalChar};
+        }
+        *idx += 1;
     }
 
-    return (LexerOutput){.lexes = lexes, .ids = id_table};
+    return (Lex){.type = Eof};
 }
 
-void delete_lexer_out(LexerOutput lexer_out) {
-    delete_vec(lexer_out.ids);
-    delete_vec(lexer_out.lexes);
-}
-
-void print_ids(const char *input, const Vector *ids) {
+void print_ids(const char *input, const Ids *ids) {
     for (uint64_t i = 0; i < ids->length; i++) {
         Span span = ((Span *)ids->v)[i];
         printf("<Id %zu %.*s>\n", i, (int)span.len, input + span.start);
     }
 }
 
-void print_lexes(const Vector *lexes) {
+void print_lexes(const Lexes *lexes) {
     for (uint64_t i = 0; i < lexes->length; i++) {
         Lex lex = ((Lex *)lexes->v)[i];
         switch (lex.type) {
         case Invalid:
             puts(":Unhandled or Broken Lex:\n");
+            break;
+        case Eof:
+            puts(":End of File:\n");
             break;
         case String:
             printf(":String id %zu:\n", lex.id);
@@ -829,6 +873,9 @@ void print_lexes(const Vector *lexes) {
             case KEY_COUNT:
                 break;
             }
+            break;
+        case MacroToken:
+            puts(":MacroToken:");
             break;
         case LBracket:
             puts(":LBracket:");
