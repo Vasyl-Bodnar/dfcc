@@ -17,6 +17,13 @@ enum lex_type {
     String,
     AdjacentString,
     MacroToken,
+    ConstantUnsignedLongLong,
+    ConstantUnsignedLong,
+    ConstantUnsignedBitPrecise,
+    ConstantUnsigned,
+    ConstantLongLong,
+    ConstantLong,
+    ConstantBitPrecise,
     Constant,
     ConstantFloat,
     ConstantChar,
@@ -77,7 +84,7 @@ enum invalid_type {
     UnfinishedChar,
     IllegalChar,
     IllegalEscapeChar,
-    BadMacroKeyword,
+    IllegalString,
 };
 
 enum lex_keyword {

@@ -348,8 +348,7 @@ Lex check_keyword(const char *input, Span span) {
 }
 
 // MINOR: Possibly handle XID_Start and XID_Continue
-Lex keyword_or_id(const char *input, size_t idx, size_t limit,
-                  Vector **id_table) {
+Lex keyword_or_id(const char *input, size_t idx, Vector **id_table) {
     if (nondigit(input[idx])) {
         Span span = {idx, 1};
 
@@ -471,143 +470,106 @@ Lex punctuator(const char *input, size_t idx, size_t limit, Vector **id_table) {
     case '}':
         return (Lex){.type = RSquigly, .span = {.start = idx, .len = 1}};
     case '.':
-        if (limit > 2 && input[idx + 1] == '.' && input[idx + 2] == '.') {
+        if (input[idx + 1] == '.' && input[idx + 2] == '.') {
             return (Lex){.type = DotDotDot, .span = {.start = idx, .len = 3}};
         }
         return (Lex){.type = Dot, .span = {.start = idx, .len = 1}};
     case '&':
-        if (limit > 1) {
-            if (input[idx + 1] == '&')
-                return (Lex){.type = EtEt, .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '=')
-                return (Lex){.type = EtEqual, .span = {.start = idx, .len = 2}};
-        }
+        if (input[idx + 1] == '&')
+            return (Lex){.type = EtEt, .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == '=')
+            return (Lex){.type = EtEqual, .span = {.start = idx, .len = 2}};
         return (Lex){.type = Et, .span = {.start = idx, .len = 1}};
     case '*':
-        if (limit > 1 && input[idx + 1] == '=') {
+        if (input[idx + 1] == '=') {
             return (Lex){.type = StarEqual, .span = {.start = idx, .len = 2}};
         }
         return (Lex){.type = Star, .span = {.start = idx, .len = 1}};
     case '+':
-        if (limit > 1) {
-            if (input[idx + 1] == '+')
-                return (Lex){.type = PlusPlus,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '=')
-                return (Lex){.type = PlusEqual,
-                             .span = {.start = idx, .len = 2}};
-        }
+        if (input[idx + 1] == '+')
+            return (Lex){.type = PlusPlus, .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == '=')
+            return (Lex){.type = PlusEqual, .span = {.start = idx, .len = 2}};
         return (Lex){.type = Plus, .span = {.start = idx, .len = 1}};
     case '-':
-        if (limit > 1) {
-            if (input[idx + 1] == '>')
-                return (Lex){.type = Arrow, .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '-')
-                return (Lex){.type = MinusMinus,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '=')
-                return (Lex){.type = MinusEqual,
-                             .span = {.start = idx, .len = 2}};
-        }
+        if (input[idx + 1] == '>')
+            return (Lex){.type = Arrow, .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == '-')
+            return (Lex){.type = MinusMinus, .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == '=')
+            return (Lex){.type = MinusEqual, .span = {.start = idx, .len = 2}};
         return (Lex){.type = Minus, .span = {.start = idx, .len = 1}};
     case '~':
         return (Lex){.type = Tilde, .span = {.start = idx, .len = 1}};
     case '!':
-        if (limit > 1 && input[idx + 1] == '=') {
+        if (input[idx + 1] == '=') {
             return (Lex){.type = ExclamationEqual,
                          .span = {.start = idx, .len = 2}};
         }
         return (Lex){.type = Exclamation, .span = {.start = idx, .len = 1}};
     case '/':
-        if (limit > 1 && input[idx + 1] == '=') {
+        if (input[idx + 1] == '=') {
             return (Lex){.type = SlashEqual, .span = {.start = idx, .len = 2}};
         }
         return (Lex){.type = Slash, .span = {.start = idx, .len = 1}};
     case '%':
-        if (limit > 3 && input[idx + 1] == ':' && input[idx + 2] == '%' &&
-            input[idx + 3] == ':') {
+        if (input[idx + 1] == ':' &&
+            ((input[idx + 2] == '%' && input[idx + 3] == ':') ||
+             input[idx + 2] == '#')) {
             return (Lex){.type = HashHash, .span = {.start = idx, .len = 4}};
-        } else if (limit > 2 && input[idx + 1] == ':' &&
-                   input[idx + 2] == '#') {
-            return (Lex){.type = HashHash, .span = {.start = idx, .len = 3}};
-        } else if (limit > 1) {
-            if (input[idx + 1] == '=')
-                return (Lex){.type = PercentEqual,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '>')
-                return (Lex){.type = RSquigly,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == ':')
-                return macro(input, idx, limit, id_table);
-        }
+        } else if (input[idx + 1] == '=')
+            return (Lex){.type = PercentEqual,
+                         .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == '>')
+            return (Lex){.type = RSquigly, .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == ':')
+            return macro(input, idx, limit, id_table);
         return (Lex){.type = Percent, .span = {.start = idx, .len = 1}};
     case '<':
-        if (limit > 2 && input[idx + 1] == '<') {
+        if (input[idx + 1] == '<') {
             if (input[idx + 2] == '=')
                 return (Lex){.type = LeftLeftEqual,
                              .span = {.start = idx, .len = 3}};
             return (Lex){.type = LeftLeft, .span = {.start = idx, .len = 2}};
-        } else if (limit > 1) {
-            if (input[idx + 1] == '<')
-                return (Lex){.type = LeftLeft,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '=')
-                return (Lex){.type = LeftEqual,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == ':')
-                return (Lex){.type = LBracket,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '%')
-                return (Lex){.type = LSquigly,
-                             .span = {.start = idx, .len = 2}};
-        }
+        } else if (input[idx + 1] == '=')
+            return (Lex){.type = LeftEqual, .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == ':')
+            return (Lex){.type = LBracket, .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == '%')
+            return (Lex){.type = LSquigly, .span = {.start = idx, .len = 2}};
         return (Lex){.type = Left, .span = {.start = idx, .len = 1}};
     case '>':
-        if (limit > 2 && input[idx + 1] == '>') {
+        if (input[idx + 1] == '>') {
             if (input[idx + 2] == '=')
                 return (Lex){.type = RightRightEqual,
                              .span = {.start = idx, .len = 3}};
             return (Lex){.type = RightRight, .span = {.start = idx, .len = 2}};
-        } else if (limit > 1) {
-            if (input[idx + 1] == '>')
-                return (Lex){.type = RightRight,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '=')
-                return (Lex){.type = RightEqual,
-                             .span = {.start = idx, .len = 2}};
-        }
+        } else if (input[idx + 1] == '=')
+            return (Lex){.type = RightEqual, .span = {.start = idx, .len = 2}};
         return (Lex){.type = Right, .span = {.start = idx, .len = 1}};
     case '^':
-        if (limit > 1 && input[idx + 1] == '=') {
+        if (input[idx + 1] == '=') {
             return (Lex){.type = CaretEqual, .span = {.start = idx, .len = 2}};
         }
         return (Lex){.type = Caret, .span = {.start = idx, .len = 1}};
     case '|':
-        if (limit > 1) {
-            if (input[idx + 1] == '|')
-                return (Lex){.type = PipePipe,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '=')
-                return (Lex){.type = PipeEqual,
-                             .span = {.start = idx, .len = 2}};
-        }
+        if (input[idx + 1] == '|')
+            return (Lex){.type = PipePipe, .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == '=')
+            return (Lex){.type = PipeEqual, .span = {.start = idx, .len = 2}};
         return (Lex){.type = Pipe, .span = {.start = idx, .len = 1}};
     case '?':
         return (Lex){.type = Question, .span = {.start = idx, .len = 1}};
     case ':':
-        if (limit > 1) {
-            if (input[idx + 1] == ':')
-                return (Lex){.type = ColonColon,
-                             .span = {.start = idx, .len = 2}};
-            else if (input[idx + 1] == '>')
-                return (Lex){.type = RBracket,
-                             .span = {.start = idx, .len = 2}};
-        }
+        if (input[idx + 1] == ':')
+            return (Lex){.type = ColonColon, .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == '>')
+            return (Lex){.type = RBracket, .span = {.start = idx, .len = 2}};
         return (Lex){.type = Colon, .span = {.start = idx, .len = 1}};
     case ';':
         return (Lex){.type = Semicolon, .span = {.start = idx, .len = 1}};
     case '=':
-        if (limit > 1 && input[idx + 1] == '=') {
+        if (input[idx + 1] == '=') {
             return (Lex){.type = EqualEqual, .span = {.start = idx, .len = 2}};
         }
         return (Lex){.type = Equal, .span = {.start = idx, .len = 1}};
@@ -620,26 +582,7 @@ Lex punctuator(const char *input, size_t idx, size_t limit, Vector **id_table) {
     }
 }
 
-Lex num_constant(const char *input, size_t idx, size_t limit, Span span,
-                 uint64_t base, int (*xdigit)(char c),
-                 uint64_t (*xacquire)(char c)) {
-    uint64_t constant = xacquire(input[idx]);
-
-    while (xdigit(input[span.start + span.len])) {
-        constant *= base;
-        constant += xacquire(input[span.start + span.len]);
-
-        span.len += 1;
-        if (input[span.start + span.len] == '\'' && span.len + 1 < limit &&
-            xdigit(input[span.start + span.len + 1])) {
-            span.len += 1;
-        }
-    }
-
-    return (Lex){.type = Constant, .span = span, .constant = constant};
-}
-
-Lex constant_char(const char *input, size_t idx, size_t limit) {
+Lex constant_char(const char *input, size_t idx) {
     if (input[idx + 1] == '\\') {
         char c;
         switch (input[idx + 2]) {
@@ -677,8 +620,11 @@ Lex constant_char(const char *input, size_t idx, size_t limit) {
             c = 0x0b;
             goto Single_char;
         case 'x':
-        case 'X':
             // TODO: Arbitrary Hex?
+            break;
+        case 'u':
+        case 'U':
+            // TODO: Handle Universal character name
             break;
         default:
             if (oct_digit(input[idx + 2])) {
@@ -708,7 +654,7 @@ Lex constant_char(const char *input, size_t idx, size_t limit) {
         return (Lex){
             .type = Invalid, .span = {idx, 2}, .invalid = IllegalEscapeChar};
     Single_char:
-        if (limit > 3 && input[idx + 3] == '\'') {
+        if (input[idx + 3] == '\'') {
             return (Lex){.type = ConstantChar, .span = {idx, 4}, .constant = c};
         }
         return (Lex){
@@ -723,62 +669,246 @@ Lex constant_char(const char *input, size_t idx, size_t limit) {
     return (Lex){.type = Invalid, .span = {idx, 2}, .invalid = UnfinishedChar};
 }
 
-// TODO: Floats, suffixes
-Lex constant(const char *input, size_t idx, size_t limit) {
-    if (nonzero(input[idx])) {
-        return num_constant(input, idx, limit, (Span){idx, 1}, 10, digit,
-                            acquire);
-    } else if (input[idx] == '0') {
-        if (limit > 2) {
-            if ((input[idx + 1] == 'x' || input[idx + 1] == 'X') &&
-                hex_digit(input[idx + 2])) {
-                return num_constant(input, idx + 2, limit, (Span){idx, 3}, 16,
-                                    hex_digit, hex_acquire);
-            } else if ((input[idx + 1] == 'b' || input[idx + 1] == 'B') &&
-                       bin_digit(input[idx + 2])) {
-                return num_constant(input, idx + 2, limit, (Span){idx, 3}, 2,
-                                    bin_digit, acquire);
+enum lex_type get_integer_suffix(const char *input, Span *span) {
+    switch (input[span->start + span->len]) {
+    case 'u':
+    case 'U':
+        switch (input[span->start + span->len + 1]) {
+        case 'l':
+            if (input[span->start + span->len + 2] == 'l') {
+                span->len += 3;
+                return ConstantUnsignedLongLong;
+            } else {
+                span->len += 2;
+                return ConstantUnsignedLong;
             }
+        case 'L':
+            if (input[span->start + span->len + 2] == 'L') {
+                span->len += 3;
+                return ConstantUnsignedLongLong;
+            } else {
+                span->len += 2;
+                return ConstantUnsignedLong;
+            }
+        case 'w':
+        case 'W':
+            span->len += 2;
+            return ConstantUnsignedBitPrecise;
+        default:
+            span->len += 1;
+            return ConstantUnsigned;
         }
-        if (limit > 1 && oct_digit(input[idx + 1])) {
-            return num_constant(input, idx + 1, limit, (Span){idx, 2}, 8,
-                                oct_digit, acquire);
+    case 'l':
+        if (input[span->start + span->len + 1] == 'l') {
+            if (input[span->start + span->len + 2] == 'u' ||
+                input[span->start + span->len + 2] == 'U') {
+                span->len += 3;
+                return ConstantUnsignedLongLong;
+            }
+            span->len += 2;
+            return ConstantLongLong;
+        } else if (input[span->start + span->len + 1] == 'u' ||
+                   input[span->start + span->len + 1] == 'U') {
+            span->len += 2;
+            return ConstantUnsignedLong;
         }
-        return (Lex){.type = Constant, .span = {idx, 1}, .constant = 0};
-    } else if (limit > 2 && input[idx] == '\'') {
-        return constant_char(input, idx, limit);
+        span->len += 1;
+        return ConstantLong;
+    case 'L':
+        if (input[span->start + span->len + 1] == 'L') {
+            if (input[span->start + span->len + 2] == 'u' ||
+                input[span->start + span->len + 2] == 'U') {
+                span->len += 3;
+                return ConstantUnsignedLongLong;
+            }
+            span->len += 2;
+            return ConstantLongLong;
+        } else if (input[span->start + span->len + 1] == 'u' ||
+                   input[span->start + span->len + 1] == 'U') {
+            span->len += 2;
+            return ConstantUnsignedLong;
+        }
+        span->len += 1;
+        return ConstantLong;
+    case 'w':
+    case 'W':
+        if (input[span->start + span->len + 1] == 'u' ||
+            input[span->start + span->len + 1] == 'U') {
+            span->len += 2;
+            return ConstantUnsignedBitPrecise;
+        }
+        span->len += 1;
+        return ConstantBitPrecise;
+    default:
+        return Constant;
     }
-    return (Lex){0};
 }
 
-// TODO: Handle u8, u, U, L, also for chars
-Lex string(const char *input, size_t idx, size_t limit, Vector **id_table) {
-    if (input[idx] == '"') {
-        Span span = {idx, 1};
+Lex dec_or_float_constant(const char *input, size_t idx, Span span) {
+    uint64_t constant = input[idx] - '0';
 
-        while (input[span.start + span.len] != '"') {
+    while (digit(input[span.start + span.len])) {
+        constant *= 10;
+        constant += input[span.start + span.len] - '0';
+
+        span.len += 1;
+        if (input[span.start + span.len] == '\'' &&
+            digit(input[span.start + span.len + 1])) {
+            span.len += 1;
+        }
+    }
+
+    enum lex_type suffixed = get_integer_suffix(input, &span);
+
+    return (Lex){.type = suffixed, .span = span, .constant = constant};
+}
+
+Lex hex_or_float_constant(const char *input, size_t idx, Span span) {
+    uint64_t constant = hex_acquire(input[idx]);
+
+    while (hex_digit(input[span.start + span.len])) {
+        constant *= 16;
+        constant += hex_acquire(input[span.start + span.len]);
+
+        span.len += 1;
+        if (input[span.start + span.len] == '\'' &&
+            hex_digit(input[span.start + span.len + 1])) {
+            span.len += 1;
+        }
+    }
+
+    enum lex_type suffixed = get_integer_suffix(input, &span);
+
+    return (Lex){.type = suffixed, .span = span, .constant = constant};
+}
+
+Lex num_constant(const char *input, size_t idx, Span span, uint64_t base,
+                 int (*xdigit)(char c), uint64_t (*xacquire)(char c)) {
+    uint64_t constant = xacquire(input[idx]);
+
+    while (xdigit(input[span.start + span.len])) {
+        constant *= base;
+        constant += xacquire(input[span.start + span.len]);
+
+        span.len += 1;
+        if (input[span.start + span.len] == '\'' &&
+            xdigit(input[span.start + span.len + 1])) {
+            span.len += 1;
+        }
+    }
+
+    enum lex_type suffixed = get_integer_suffix(input, &span);
+
+    return (Lex){.type = suffixed, .span = span, .constant = constant};
+}
+
+// TODO: Floats
+Lex constant(const char *input, size_t idx) {
+    Lex result = (Lex){0};
+    switch (input[idx]) {
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+        result = dec_or_float_constant(input, idx, (Span){idx, 1});
+        break;
+    case '0':
+        if ((input[idx + 1] == 'x' || input[idx + 1] == 'X') &&
+            hex_digit(input[idx + 2])) {
+            result = hex_or_float_constant(input, idx + 2, (Span){idx, 3});
+        } else if ((input[idx + 1] == 'b' || input[idx + 1] == 'B') &&
+                   bin_digit(input[idx + 2])) {
+            result = num_constant(input, idx + 2, (Span){idx, 3}, 2, bin_digit,
+                                  acquire);
+        } else if (oct_digit(input[idx + 1])) {
+            result = num_constant(input, idx + 1, (Span){idx, 2}, 8, oct_digit,
+                                  acquire);
+        } else {
+            result = (Lex){.type = Constant, .span = {idx, 1}, .constant = 0};
+        }
+        break;
+    case '\'':
+        result = constant_char(input, idx);
+        break;
+    case 'u':
+        if (input[idx + 1] == '8' && input[idx + 2] == '\'') {
+            result = constant_char(input, idx + 2);
+        } else if (input[idx + 1] == '\'') {
+            result = constant_char(input, idx + 1);
+        }
+        break;
+    case 'U':
+    case 'L':
+        if (input[idx + 1] == '\'') {
+            result = constant_char(input, idx + 1);
+        }
+        break;
+    default:
+        break;
+    }
+
+    return result;
+}
+
+Lex string_ret(const char *input, size_t idx, size_t limit, Vector **id_table) {
+    Span span = {idx, 1};
+
+    while (input[span.start + span.len] != '"') {
+        if (input[span.start + span.len] == '\\' &&
+            input[span.start + span.len + 1] == '"') {
+            span.len += 2;
+        } else {
             span.len += 1;
         }
 
-        span.len += 1;
-
-        return (Lex){.type = String,
-                     .span = span,
-                     .id = search_id_table(input, span, id_table)};
+        if (limit <= span.len) {
+            return (Lex){
+                .type = Invalid, .span = span, .invalid = IllegalString};
+        }
     }
-    return (Lex){0};
+
+    span.len += 1;
+
+    return (Lex){.type = String,
+                 .span = span,
+                 .id = search_id_table(input, span, id_table)};
+}
+
+// TODO: Handle u8, u, U, L properly, also true for chars
+Lex string(const char *input, size_t idx, size_t limit, Vector **id_table) {
+    Lex result = (Lex){0};
+    if (input[idx] == '"') {
+        result = string_ret(input, idx, limit, id_table);
+    } else if (input[idx] == 'u') {
+        if (input[idx + 1] == '8' && input[idx + 2] == '"') {
+            result = string_ret(input, idx + 2, limit - 2, id_table);
+        } else if (input[idx + 1] == '"') {
+            result = string_ret(input, idx + 1, limit - 1, id_table);
+        }
+    } else if (input[idx] == 'U' && input[idx + 1] == '"') {
+        result = string_ret(input, idx + 1, limit - 1, id_table);
+    } else if (input[idx] == 'L' && input[idx + 1] == '"') {
+        result = string_ret(input, idx + 1, limit - 1, id_table);
+    }
+
+    return result;
 }
 
 Lex lex_next(const char *input, size_t len, size_t *idx, Ids **id_table) {
     Lex lexed;
     while (*idx < len) {
-        lexed = keyword_or_id(input, *idx, len - *idx, id_table);
+        lexed = keyword_or_id(input, *idx, id_table);
         if (lexed.type || lexed.invalid) {
             *idx += lexed.span.len;
             return lexed;
         }
 
-        lexed = constant(input, *idx, len - *idx);
+        lexed = constant(input, *idx);
         if (lexed.type || lexed.invalid) {
             *idx += lexed.span.len;
             return lexed;
@@ -832,6 +962,27 @@ void print_lexes(const Lexes *lexes) {
             break;
         case Identifier:
             printf(":Identifier id %zu:\n", lex.id);
+            break;
+        case ConstantUnsignedLongLong:
+            printf(":UnsidgnedLongLongNumber %zu:\n", lex.constant);
+            break;
+        case ConstantUnsignedLong:
+            printf(":UnsidgnedLongNumber %zu:\n", lex.constant);
+            break;
+        case ConstantUnsignedBitPrecise:
+            printf(":UnsidgnedBitPreciseNumber %zu:\n", lex.constant);
+            break;
+        case ConstantUnsigned:
+            printf(":UnsidgnedNumber %zu:\n", lex.constant);
+            break;
+        case ConstantLongLong:
+            printf(":LongLongNumber %zu:\n", lex.constant);
+            break;
+        case ConstantLong:
+            printf(":LongNumber %zu:\n", lex.constant);
+            break;
+        case ConstantBitPrecise:
+            printf(":BitPreciseNumber %zu:\n", lex.constant);
             break;
         case Constant:
             printf(":Number %zu:\n", lex.constant);
