@@ -12,10 +12,14 @@
 enum lex_type {
     Invalid = 0,
     Eof,
+    Comment,
     Keyword,
     Identifier,
     String,
-    AdjacentString,
+    StringU8,
+    StringU16,
+    StringU32,
+    StringWide,
     MacroToken,
     ConstantUnsignedLongLong,
     ConstantUnsignedLong,
@@ -27,6 +31,10 @@ enum lex_type {
     Constant,
     ConstantFloat,
     ConstantChar,
+    ConstantCharU8,
+    ConstantCharU16,
+    ConstantCharU32,
+    ConstantCharWide,
     LBracket, // Also <:
     RBracket, // Also :>
     LParen,
@@ -178,6 +186,7 @@ typedef struct Lex {
         enum invalid_type invalid;
         size_t id;
         uint64_t constant;
+        double floating;
     };
 } Lex;
 
