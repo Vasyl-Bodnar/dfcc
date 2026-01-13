@@ -1,3 +1,6 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #ifndef LEXER_H_
 #define LEXER_H_
 
@@ -15,6 +18,8 @@ enum lex_type {
     AdjacentString,
     MacroToken,
     Constant,
+    ConstantFloat,
+    ConstantChar,
     LBracket, // Also <:
     RBracket, // Also :>
     LParen,
@@ -69,7 +74,10 @@ enum lex_type {
 // TODO: Expand for better errors
 enum invalid_type {
     Ok = 0,
+    UnfinishedChar,
     IllegalChar,
+    IllegalEscapeChar,
+    BadMacroKeyword,
 };
 
 enum lex_keyword {
@@ -131,10 +139,9 @@ enum lex_keyword {
 };
 
 enum macro_type {
-    Undefined = 0,
     Include,
     Define,
-    DefineFun,
+    Undefine,
     If,
     IfDefined,
     IfNotDefined,
@@ -142,8 +149,8 @@ enum macro_type {
     ElseIf,
     ElseIfDefined,
     ElseIfNotDefined,
+    EndIf,
     Line,
-    LineFile,
     Embed,
     Error,
     Warning,
@@ -167,8 +174,12 @@ typedef struct Lex {
     };
 } Lex;
 
+typedef Vector Ids;
+typedef Vector Lexes;
+
 // TODO: All this macro stuff should belong to preprocessor not lexer
 
+/*
 enum include_type {
     Hheader,
     Qheader,
@@ -188,9 +199,6 @@ enum macro_lex_type {
     MacroRight,
     MacroRightEqual,
 };
-
-typedef Vector Ids;
-typedef Vector Lexes;
 
 typedef struct MacroLex {
     enum macro_lex_type type;
@@ -227,6 +235,7 @@ typedef struct Macro {
         size_t pragma; // TODO: consider implementing pragmas
     };
 } Macro;
+*/
 
 // Last character must be a newline
 Lex lex_next(const char *input, size_t len, size_t *idx, Ids **ids);

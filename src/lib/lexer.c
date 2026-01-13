@@ -1,4 +1,8 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "lexer.h"
+#include <stdlib.h>
 
 uint8_t key_len_table[KEY_COUNT] = {
     [KEY_alignas] = 7,
@@ -368,45 +372,82 @@ Lex keyword_or_id(const char *input, size_t idx, size_t limit,
 Lex macro(const char *input, size_t idx, size_t limit, Vector **id_table) {
     if (limit > 1) {
         if (nondigit(input[idx + 1])) {
-            // Adds the id to id_table
-            Lex id = keyword_or_id(input, idx + 1, limit - 1, id_table);
-            if (id.type) {
-                if (id.type != Keyword) {
-                    if (!memcmp("define", input + id.span.start, id.span.len)) {
-                    } else if (!memcmp("include", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("if", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("ifdef", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("ifndef", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("else", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("elif", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("elif", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("elifdef", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("elifndef", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("endif", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("line", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("embed", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("error", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("warning", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("pragma", input + id.span.start,
-                                       id.span.len)) {
-                    } else if (!memcmp("undef", input + id.span.start,
-                                       id.span.len)) {
-                    }
-                }
+            Span span = {idx, 2};
+
+            while (nondigit(input[span.start + span.len])) {
+                span.len += 1;
+            }
+
+            if (!memcmp("define", input + span.start + 1, span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = Define};
+            } else if (!memcmp("include", input + span.start + 1,
+                               span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = Include};
+            } else if (!memcmp("if", input + span.start + 1, span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = If};
+            } else if (!memcmp("ifdef", input + span.start + 1, span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = IfDefined};
+            } else if (!memcmp("ifndef", input + span.start + 1,
+                               span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = IfNotDefined};
+            } else if (!memcmp("else", input + span.start + 1, span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = Else};
+            } else if (!memcmp("elif", input + span.start + 1, span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = ElseIf};
+            } else if (!memcmp("elifdef", input + span.start + 1,
+                               span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = ElseIfDefined};
+            } else if (!memcmp("elifndef", input + span.start + 1,
+                               span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = ElseIfNotDefined};
+            } else if (!memcmp("endif", input + span.start + 1, span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = EndIf};
+            } else if (!memcmp("line", input + span.start + 1, span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = Line};
+            } else if (!memcmp("embed", input + span.start + 1, span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = Embed};
+            } else if (!memcmp("error", input + span.start + 1, span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = Error};
+            } else if (!memcmp("warning", input + span.start + 1,
+                               span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = Warning};
+            } else if (!memcmp("pragma", input + span.start + 1,
+                               span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = Pragma};
+            } else if (!memcmp("undef", input + span.start + 1, span.len - 1)) {
+                return (Lex){.type = MacroToken,
+                             .span = {span.start, span.len},
+                             .macro = Undefine};
             }
         } else if (input[idx + 1] == '#') {
             return (Lex){.type = HashHash, .span = {.start = idx, .len = 2}};
@@ -485,9 +526,11 @@ Lex punctuator(const char *input, size_t idx, size_t limit, Vector **id_table) {
     case '%':
         if (limit > 3 && input[idx + 1] == ':' && input[idx + 2] == '%' &&
             input[idx + 3] == ':') {
-            return macro(input, idx, limit, id_table);
-        }
-        if (limit > 1) {
+            return (Lex){.type = HashHash, .span = {.start = idx, .len = 4}};
+        } else if (limit > 2 && input[idx + 1] == ':' &&
+                   input[idx + 2] == '#') {
+            return (Lex){.type = HashHash, .span = {.start = idx, .len = 3}};
+        } else if (limit > 1) {
             if (input[idx + 1] == '=')
                 return (Lex){.type = PercentEqual,
                              .span = {.start = idx, .len = 2}};
@@ -596,7 +639,91 @@ Lex num_constant(const char *input, size_t idx, size_t limit, Span span,
     return (Lex){.type = Constant, .span = span, .constant = constant};
 }
 
-// TODO: Chars, floats, suffixes
+Lex constant_char(const char *input, size_t idx, size_t limit) {
+    if (input[idx + 1] == '\\') {
+        char c;
+        switch (input[idx + 2]) {
+        case '\'':
+            c = 0x27;
+            goto Single_char;
+        case '"':
+            c = 0x22;
+            goto Single_char;
+        case '?':
+            c = 0x3f;
+            goto Single_char;
+        case '\\':
+            c = 0x5c;
+            goto Single_char;
+        case 'a':
+            c = 0x07;
+            goto Single_char;
+        case 'b':
+            c = 0x08;
+            goto Single_char;
+        case 'f':
+            c = 0x0c;
+            goto Single_char;
+        case 'n':
+            c = 0x0a;
+            goto Single_char;
+        case 'r':
+            c = 0x0d;
+            goto Single_char;
+        case 't':
+            c = 0x09;
+            goto Single_char;
+        case 'v':
+            c = 0x0b;
+            goto Single_char;
+        case 'x':
+        case 'X':
+            // TODO: Arbitrary Hex?
+            break;
+        default:
+            if (oct_digit(input[idx + 2])) {
+                if (oct_digit(input[idx + 3])) {
+                    if (oct_digit(input[idx + 4]) && input[idx + 5] == '\'') {
+                        return (Lex){.type = ConstantChar,
+                                     .span = {idx, 6},
+                                     .constant = (input[idx + 2] - '0') * 64 +
+                                                 (input[idx + 3] - '0') * 8 +
+                                                 (input[idx + 4] - '0')};
+                    } else if (input[idx + 4] == '\'') {
+                        return (Lex){.type = ConstantChar,
+                                     .span = {idx, 5},
+                                     .constant = (input[idx + 2] - '0') * 8 +
+                                                 (input[idx + 3] - '0')};
+                    }
+                    return (Lex){.type = Invalid,
+                                 .span = {idx, 4},
+                                 .invalid = IllegalEscapeChar};
+                } else if (input[idx + 3] == '\'') {
+                    return (Lex){.type = ConstantChar,
+                                 .span = {idx, 4},
+                                 .constant = input[idx + 2] - '0'};
+                }
+            }
+        }
+        return (Lex){
+            .type = Invalid, .span = {idx, 2}, .invalid = IllegalEscapeChar};
+    Single_char:
+        if (limit > 3 && input[idx + 3] == '\'') {
+            return (Lex){.type = ConstantChar, .span = {idx, 4}, .constant = c};
+        }
+        return (Lex){
+            .type = Invalid, .span = {idx, 3}, .invalid = UnfinishedChar};
+    }
+
+    if (input[idx + 2] == '\'') {
+        return (Lex){
+            .type = ConstantChar, .span = {idx, 3}, .constant = input[idx + 1]};
+    }
+
+    return (Lex){.type = Invalid, .span = {idx, 2}, .invalid = UnfinishedChar};
+}
+
+// TODO: Floats, suffixes
 Lex constant(const char *input, size_t idx, size_t limit) {
     if (nonzero(input[idx])) {
         return num_constant(input, idx, limit, (Span){idx, 1}, 10, digit,
@@ -618,6 +745,8 @@ Lex constant(const char *input, size_t idx, size_t limit) {
                                 oct_digit, acquire);
         }
         return (Lex){.type = Constant, .span = {idx, 1}, .constant = 0};
+    } else if (limit > 2 && input[idx] == '\'') {
+        return constant_char(input, idx, limit);
     }
     return (Lex){0};
 }
@@ -668,8 +797,9 @@ Lex lex_next(const char *input, size_t len, size_t *idx, Ids **id_table) {
         }
 
         if (!space(input[*idx])) {
+            *idx += 1;
             return (Lex){
-                .type = Invalid, .span = {*idx, 1}, .invalid = IllegalChar};
+                .type = Invalid, .span = {*idx - 1, 1}, .invalid = IllegalChar};
         }
         *idx += 1;
     }
@@ -705,6 +835,12 @@ void print_lexes(const Lexes *lexes) {
             break;
         case Constant:
             printf(":Number %zu:\n", lex.constant);
+            break;
+        case ConstantFloat:
+            printf(":Float %f:\n", *(double *)&lex.constant);
+            break;
+        case ConstantChar:
+            printf(":Char %zu:\n", lex.constant);
             break;
         case Keyword:
             switch (lex.key) {
