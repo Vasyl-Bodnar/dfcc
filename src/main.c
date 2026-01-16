@@ -1,8 +1,7 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
    License, v. 2.0. If a copy of the MPL was not distributed with this
    file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-#include "lib/lexer.h"
-#include "lib/vec.h"
+#include "lib/preprocessor.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -35,11 +34,13 @@ int main(int argc, char *argv[]) {
 
     Lexes *lexes = create_vec(16, sizeof(Lex));
     Ids *ids = create_vec(8, sizeof(Span));
+    Macros *macros = create_vec(8, sizeof(MacroDefine));
 
     Lex lex;
     size_t idx = 0;
+    size_t depth = 0;
     do {
-        lex = lex_next(buf, bytes, &idx, &ids);
+        lex = preprocessed_lex_next(buf, bytes, &idx, &depth, &ids, &macros);
         push_elem_vec(&lexes, &lex);
     } while (lex.type != Eof);
 

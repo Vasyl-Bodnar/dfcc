@@ -101,6 +101,12 @@ enum invalid_type {
     IllegalChar,
     IllegalEscapeChar,
     IllegalString,
+    ExpectedIdMacroDefine,
+    ExpectedGoodArgsMacroDefine,
+    ExpectedNLAfterSlashMacroDefine,
+    ExpectedIdIfDef,
+    ExpectedIfEndIf,
+    FailedRealloc, // Dark times ahead
 };
 
 enum lex_keyword {
@@ -201,71 +207,11 @@ typedef struct Lex {
 typedef Vector Ids;
 typedef Vector Lexes;
 
-// TODO: All this macro stuff should belong to preprocessor not lexer
-
-/*
-enum include_type {
-    Hheader,
-    Qheader,
-};
-
-enum macro_lex_type {
-    MacroConstant,
-    MacroIdentifier,
-    MacroDefinedIdentifier,
-    MacroEtEt,
-    MacroPipePipe,
-    MacroExclamation,
-    MacroEqualEqual,
-    MacroExclamationEqual,
-    MacroLeft,
-    MacroLeftEqual,
-    MacroRight,
-    MacroRightEqual,
-};
-
-typedef struct MacroLex {
-    enum macro_lex_type type;
-    union {
-        size_t id;
-        uint64_t constant;
-    };
-} MacroLex;
-
-typedef Vector MacroLexes;
-
-typedef struct Macro {
-    enum macro_type type;
-    union {
-        struct {
-            size_t id;
-            Span span;
-            Ids *args;
-        } def;
-        struct {
-            Span span;
-            MacroLexes *lexes;
-        } cond;
-        struct {
-            enum include_type incl_type;
-            size_t id;
-        } incl;
-        struct {
-            size_t lineno;
-            size_t id;
-        } line;
-        size_t defcond;
-        size_t str;
-        size_t pragma; // TODO: consider implementing pragmas
-    };
-} Macro;
-*/
-
 // Last character must be a newline
-Lex lex_next(const char *input, size_t len, size_t *idx, Ids **ids);
+Lex lex_next(const char *input, size_t len, size_t *idx, Ids **id_table);
 
 void print_lexes(const Lexes *lexes);
 
-void print_ids(const char *input, const Ids *ids);
+void print_ids(const char *input, const Ids *id_table);
 
 #endif // LEXER_H_
