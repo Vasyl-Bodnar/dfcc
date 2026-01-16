@@ -2,6 +2,7 @@
    License, v. 2.0. If a copy of the MPL was not distributed with this
    file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "lexer.h"
+#include <math.h>
 #include <stdlib.h>
 
 uint8_t key_len_table[KEY_COUNT] = {
@@ -594,6 +595,7 @@ Lex punctuator(const char *input, size_t idx, size_t limit, Vector **id_table) {
     }
 }
 
+// TODO: There is also multibyte chars
 Lex constant_char(const char *input, size_t idx, enum lex_type char_lex) {
     size_t offset;
     switch (char_lex) {
@@ -780,8 +782,103 @@ enum lex_type get_integer_suffix(const char *input, Span *span) {
     }
 }
 
-Lex dec_or_float_constant(const char *input, size_t idx, Span span) {
-    uint64_t constant = input[idx] - '0';
+enum lex_type get_float_suffix(const char *input, Span *span) {
+    switch (input[span->start + span->len]) {
+    case 'f':
+    case 'F':
+        span->len += 1;
+        return ConstantFloat;
+    case 'l':
+    case 'L':
+        span->len += 1;
+        return ConstantLongDouble;
+    case 'd':
+        switch (input[span->start + span->len + 1]) {
+        case 'f':
+            span->len += 2;
+            return ConstantDecimal32;
+        case 'd':
+            span->len += 2;
+            return ConstantDecimal64;
+        case 'l':
+            span->len += 2;
+            return ConstantDecimal128;
+        }
+    case 'D':
+        switch (input[span->start + span->len + 1]) {
+        case 'F':
+            span->len += 2;
+            return ConstantDecimal32;
+        case 'D':
+            span->len += 2;
+            return ConstantDecimal64;
+        case 'L':
+            span->len += 2;
+            return ConstantDecimal128;
+        }
+    default:
+        return ConstantDouble;
+    }
+}
+
+// TODO: Proper float conversion
+Lex dec_float_constant(const char *input, uint64_t root, Span span) {
+    int64_t root_pow = 0;
+
+    while (digit(input[span.start + span.len])) {
+        root *= 10;
+        root += input[span.start + span.len] - '0';
+        root_pow -= 1;
+
+        span.len += 1;
+        if (input[span.start + span.len] == '\'' &&
+            digit(input[span.start + span.len + 1])) {
+            span.len += 1;
+        }
+    }
+
+    int64_t exp = 0;
+    if (input[span.start + span.len] == 'e' ||
+        input[span.start + span.len] == 'E') {
+        span.len += 1;
+        int64_t sign = 1;
+
+        if (input[span.start + span.len] == '+') {
+            span.len += 1;
+        } else if (input[span.start + span.len] == '-') {
+            span.len += 1;
+            sign = -1;
+        }
+
+        if (!digit(input[span.start + span.len])) {
+            return (Lex){
+                .type = Invalid, .span = span, .invalid = IllegalFloat};
+        }
+
+        while (digit(input[span.start + span.len])) {
+            exp *= 10;
+            exp += input[span.start + span.len] - '0';
+
+            span.len += 1;
+            if (input[span.start + span.len] == '\'' &&
+                digit(input[span.start + span.len + 1])) {
+                span.len += 1;
+            }
+        }
+
+        exp *= sign;
+    }
+
+    enum lex_type suffixed = get_float_suffix(input, &span);
+
+    return (Lex){.type = suffixed,
+                 .span = span,
+                 .floating = ((long double)root) * pow(10, exp + root_pow)};
+}
+
+Lex dec_or_float_constant(const char *input, Span span) {
+    uint64_t constant = input[span.start + span.len] - '0';
+    span.len += 1;
 
     while (digit(input[span.start + span.len])) {
         constant *= 10;
@@ -794,13 +891,89 @@ Lex dec_or_float_constant(const char *input, size_t idx, Span span) {
         }
     }
 
+    if (input[span.start + span.len] == '.') {
+        span.len += 1;
+        return dec_float_constant(input, constant, span);
+    } else if (input[span.start + span.len] == 'e' ||
+               input[span.start + span.len] == 'E') {
+        return dec_float_constant(input, constant, span);
+    }
+
     enum lex_type suffixed = get_integer_suffix(input, &span);
 
     return (Lex){.type = suffixed, .span = span, .constant = constant};
 }
 
-Lex hex_or_float_constant(const char *input, size_t idx, Span span) {
-    uint64_t constant = hex_acquire(input[idx]);
+// TODO: This needs a proper implementation
+// NOTE: Exponent is mandatory for hex but not dec
+Lex hex_float_constant(const char *input, uint64_t root, Span span) {
+    int64_t root_pow = 0;
+
+    while (hex_digit(input[span.start + span.len])) {
+        root *= 16;
+        root += hex_acquire(input[span.start + span.len]);
+        root_pow -= 1;
+
+        span.len += 1;
+        if (input[span.start + span.len] == '\'' &&
+            hex_digit(input[span.start + span.len + 1])) {
+            span.len += 1;
+        }
+    }
+
+    int64_t exp = 0;
+    if (input[span.start + span.len] == 'p' ||
+        input[span.start + span.len] == 'P') {
+        span.len += 1;
+        int64_t sign = 1;
+
+        if (input[span.start + span.len] == '+') {
+            span.len += 1;
+        } else if (input[span.start + span.len] == '-') {
+            span.len += 1;
+            sign = -1;
+        }
+
+        if (!hex_digit(input[span.start + span.len])) {
+            return (Lex){
+                .type = Invalid, .span = span, .invalid = IllegalFloat};
+        }
+
+        while (hex_digit(input[span.start + span.len])) {
+            exp *= 16;
+            exp += hex_acquire(input[span.start + span.len]);
+
+            span.len += 1;
+            if (input[span.start + span.len] == '\'' &&
+                hex_digit(input[span.start + span.len + 1])) {
+                span.len += 1;
+            }
+        }
+
+        exp *= sign;
+    } else {
+        return (Lex){
+            .type = Invalid, .span = span, .invalid = IllegalFloatHexExponent};
+    }
+
+    enum lex_type suffixed = get_float_suffix(input, &span);
+    if (suffixed == ConstantDecimal32 || suffixed == ConstantDecimal64 ||
+        suffixed == ConstantDecimal128) {
+        return (Lex){
+            .type = Invalid, .span = span, .invalid = IllegalFloatHexSuffix};
+    }
+
+    return (Lex){.type = suffixed,
+                 .span = span,
+                 .floating =
+                     ((long double)root) * ((exp + root_pow >= 0)
+                                                ? 2 << (exp + root_pow * 4)
+                                                : 2 >> (exp + root_pow * 4))};
+}
+
+Lex hex_or_float_constant(const char *input, Span span) {
+    uint64_t constant = hex_acquire(input[span.start + span.len]);
+    span.len += 1;
 
     while (hex_digit(input[span.start + span.len])) {
         constant *= 16;
@@ -811,6 +984,13 @@ Lex hex_or_float_constant(const char *input, size_t idx, Span span) {
             hex_digit(input[span.start + span.len + 1])) {
             span.len += 1;
         }
+    }
+    if (input[span.start + span.len] == '.') {
+        span.len += 1;
+        return dec_float_constant(input, constant, span);
+    } else if (input[span.start + span.len] == 'p' ||
+               input[span.start + span.len] == 'P') {
+        return dec_float_constant(input, constant, span);
     }
 
     enum lex_type suffixed = get_integer_suffix(input, &span);
@@ -838,7 +1018,6 @@ Lex num_constant(const char *input, size_t idx, Span span, uint64_t base,
     return (Lex){.type = suffixed, .span = span, .constant = constant};
 }
 
-// TODO: Floats
 Lex constant(const char *input, size_t idx) {
     Lex result = (Lex){0};
     switch (input[idx]) {
@@ -851,12 +1030,20 @@ Lex constant(const char *input, size_t idx) {
     case '7':
     case '8':
     case '9':
-        result = dec_or_float_constant(input, idx, (Span){idx, 1});
+        result = dec_or_float_constant(input, (Span){idx, 0});
+        break;
+    case '.':
+        if (digit(input[idx + 1])) {
+            result = dec_float_constant(input, 0, (Span){idx, 1});
+        }
         break;
     case '0':
-        if ((input[idx + 1] == 'x' || input[idx + 1] == 'X') &&
-            hex_digit(input[idx + 2])) {
-            result = hex_or_float_constant(input, idx + 2, (Span){idx, 3});
+        if ((input[idx + 1] == 'x' || input[idx + 1] == 'X')) {
+            if (hex_digit(input[idx + 2])) {
+                result = hex_or_float_constant(input, (Span){idx, 2});
+            } else if (input[idx + 2] == '.') {
+                result = hex_float_constant(input, 0, (Span){idx, 3});
+            }
         } else if ((input[idx + 1] == 'b' || input[idx + 1] == 'B') &&
                    bin_digit(input[idx + 2])) {
             result = num_constant(input, idx + 2, (Span){idx, 3}, 2, bin_digit,
@@ -1110,6 +1297,26 @@ void print_lexes(const Lexes *lexes) {
             break;
         case ConstantFloat:
             printf(":Float %f: [%zu, %zu]\n", lex.floating, lex.span.start,
+                   lex.span.len);
+            break;
+        case ConstantDouble:
+            printf(":Double %f: [%zu, %zu]\n", lex.floating, lex.span.start,
+                   lex.span.len);
+            break;
+        case ConstantLongDouble:
+            printf(":LongDouble %f: [%zu, %zu]\n", lex.floating, lex.span.start,
+                   lex.span.len);
+            break;
+        case ConstantDecimal32:
+            printf(":Dec32 %f: [%zu, %zu]\n", lex.floating, lex.span.start,
+                   lex.span.len);
+            break;
+        case ConstantDecimal64:
+            printf(":Dec64 %f: [%zu, %zu]\n", lex.floating, lex.span.start,
+                   lex.span.len);
+            break;
+        case ConstantDecimal128:
+            printf(":Dec128 %f: [%zu, %zu]\n", lex.floating, lex.span.start,
                    lex.span.len);
             break;
         case ConstantCharU8:

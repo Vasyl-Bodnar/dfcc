@@ -12,5 +12,6 @@ int main(void) {
     char *y = "abcdef\n";
     y = u8"abcdef\n";
     unsigned int l[8] = U"abcdef\n";
+    float abc = 12.33f, bbc = 12.F, cbc = .33L, dbc = 1e16, ebc = 12.3e5;
     return 0;
 }

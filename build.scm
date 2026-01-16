@@ -7,7 +7,7 @@
 (add-to-load-path ".")
 (use-modules (buildlib))
 
-(configure #:exe-name "dfcc") ;;#:lib-source-dir "src/lib" #:lib-name "libdfcc" #:lib-type 'both)
+(configure #:exe-name "dfcc" #:link '("m")) ;;#:lib-source-dir "src/lib" #:lib-name "libdfcc" #:lib-type 'both)
 
 (compile-c)
 
