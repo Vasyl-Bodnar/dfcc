@@ -350,10 +350,12 @@ Lex check_keyword(const char *input, Span span) {
 
 uint32_t check_string_prefix(const char *input, Span span) {
     return ((span.len == 2 && input[span.start] == 'u' &&
-             input[span.start + 1] == '8') ||
+             input[span.start + 1] == '8' &&
+             (input[span.start + 2] == '\'' || input[span.start + 2] == '"')) ||
             (span.len == 1 &&
              (input[span.start] == 'u' || input[span.start] == 'U' ||
-              input[span.start] == 'L')));
+              input[span.start] == 'L') &&
+             (input[span.start + 1] == '\'' || input[span.start + 1] == '"')));
 }
 
 // MINOR: Possibly handle XID_Start and XID_Continue
@@ -1052,7 +1054,9 @@ Lex constant(const char *input, size_t idx) {
             result = num_constant(input, idx + 1, (Span){idx, 2}, 8, oct_digit,
                                   acquire);
         } else {
-            result = (Lex){.type = Constant, .span = {idx, 1}, .constant = 0};
+            Span span = {idx, 1};
+            enum lex_type suffixed = get_integer_suffix(input, &span);
+            result = (Lex){.type = suffixed, .span = span, .constant = 0};
         }
         break;
     case '\'':
@@ -1233,7 +1237,7 @@ void print_lexes(const Lexes *lexes) {
         Lex lex = ((Lex *)lexes->v)[i];
         switch (lex.type) {
         case Invalid:
-            printf(":Unhandled or Broken Lex: [%zu, %zu]\n", lex.span.start,
+            printf(":Lex Error %d: [%zu, %zu]\n", lex.invalid, lex.span.start,
                    lex.span.len);
             break;
         case Eof:
