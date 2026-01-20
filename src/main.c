@@ -32,9 +32,9 @@ int main(int argc, char *argv[]) {
         goto Cleanup_buf_file;
     }
 
-    Lexes *lexes = create_vec(16, sizeof(Lex));
-    Ids *ids = create_vec(8, sizeof(Span));
-    Macros *macros = create_vec(8, sizeof(MacroDefine));
+    Lexes *lexes = create_lexes(16);
+    Ids *ids = create_ids(8);
+    Macros *macros = create_macros(8);
 
     Lex lex;
     size_t idx = 0;
@@ -47,8 +47,9 @@ int main(int argc, char *argv[]) {
     print_lexes(lexes);
     print_ids(buf, ids);
 
-    delete_vec(lexes);
-    delete_vec(ids);
+    free(lexes);
+    free(ids);
+    free(macros);
 
 Cleanup_buf_file:
     free(buf);

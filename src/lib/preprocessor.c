@@ -51,29 +51,6 @@ typedef struct Macro {
 } Macro;
 */
 
-MacroDefine *get_macro(Macros **macro_table, size_t id) {
-    for (size_t i = 0; i < (*macro_table)->length; i++) {
-        MacroDefine *macro = ((MacroDefine *)(*macro_table)->v) + i;
-        if (id == macro->id) {
-            return macro;
-        }
-    }
-
-    return 0;
-}
-
-uint32_t insert_or_update_macro(Macros **macro_table, MacroDefine macro) {
-    for (size_t i = 0; i < (*macro_table)->length; i++) {
-        MacroDefine *oth_macro = ((MacroDefine *)(*macro_table)->v) + i;
-        if (macro.id == oth_macro->id) {
-            memcpy(oth_macro, &macro, sizeof(MacroDefine));
-            return 2;
-        }
-    }
-
-    return push_elem_vec(macro_table, &macro);
-}
-
 Vector *process_define_args(const char *input, size_t len, size_t *idx,
                             Ids **id_table) {
     Vector *args = create_vec(0, sizeof(size_t));
@@ -99,7 +76,7 @@ Lex process_define(const char *input, size_t len, size_t *idx, Ids **id_table,
 
     Lex id = lex_next(input, len, idx, id_table);
     if (id.type == Identifier) {
-        macro.id = id.id;
+        size_t mid = id.id;
 
         if (input[*idx] == '(') {
             *idx += 1;
@@ -128,7 +105,7 @@ Lex process_define(const char *input, size_t len, size_t *idx, Ids **id_table,
         }
         macro.span = span;
 
-        if (!insert_or_update_macro(macro_table, macro)) {
+        if (!put_elem_dht(macro_table, &mid, &macro)) {
             return (Lex){
                 .type = Invalid, .span = id.span, .invalid = FailedRealloc};
         }
@@ -145,6 +122,7 @@ Lex process_define(const char *input, size_t len, size_t *idx, Ids **id_table,
 Lex conditional_exclude(const char *input, size_t len, size_t *idx,
                         size_t *if_depth, Ids **id_table,
                         Macros **macro_table) {
+    size_t cur_if_depth = *if_depth;
     Lex lex = (Lex){0};
     while (lex.type != Eof) {
         while ((lex = lex_next(input, len, idx, id_table)).type == MacroToken)
@@ -154,20 +132,26 @@ Lex conditional_exclude(const char *input, size_t len, size_t *idx,
         case IfDefined:
         case IfNotDefined:
             *if_depth += 1;
+            break;
         case Else:
         case ElseIf:
         case ElseIfDefined:
         case ElseIfNotDefined:
-            // TODO: Handle
+            if (*if_depth == cur_if_depth) {
+                // TODO: Handle
+            }
+            break;
         case EndIf:
-            if (!(*if_depth))
+            if (*if_depth == cur_if_depth) {
+                lex = (Lex){0};
                 goto Exit_if_loop;
+            }
             *if_depth -= 1;
+            break;
         default:
-            continue;
+            break;
         }
     }
-    lex = (Lex){0};
 Exit_if_loop:
     return lex;
 }
@@ -180,7 +164,7 @@ Lex preprocessed_lex_next(const char *input, size_t len, size_t *idx,
     Lex lex = lex_next(input, len, idx, id_table);
 
     if (lex.type == Identifier) {
-        MacroDefine *macro = get_macro(macro_table, lex.id);
+        MacroDefine *macro = get_elem_dht(*macro_table, &lex.id);
         if (macro) {
             // TODO: handle macro define expansion
         }
@@ -188,15 +172,26 @@ Lex preprocessed_lex_next(const char *input, size_t len, size_t *idx,
         switch (lex.macro) {
         case Define:
             lex = process_define(input, len, idx, id_table, macro_table);
+            break;
         case Include:
+            // TODO: Handle
+            lex = (Lex){0};
+            break;
         case Undefine:
+            if (!delete_elem_dht(*macro_table, &lex.id)) {
+                return (Lex){.type = Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedIdMacroUndefine};
+            }
+            break;
         case If:
+            // TODO: Handle
             lex = (Lex){0};
             break;
         case IfDefined:
             lex = lex_next(input, len, idx, id_table);
             if (lex.type == Identifier) {
-                MacroDefine *macro = get_macro(macro_table, lex.id);
+                MacroDefine *macro = get_elem_dht(*macro_table, &lex.id);
                 if (macro) {
                     *if_depth += 1;
                     lex = (Lex){0};
@@ -211,10 +206,39 @@ Lex preprocessed_lex_next(const char *input, size_t len, size_t *idx,
             }
             break;
         case IfNotDefined:
+            lex = lex_next(input, len, idx, id_table);
+            if (lex.type == Identifier) {
+                MacroDefine *macro = get_elem_dht(*macro_table, &lex.id);
+                if (macro) {
+                    lex = conditional_exclude(input, len, idx, if_depth,
+                                              id_table, macro_table);
+                } else {
+                    *if_depth += 1;
+                    lex = (Lex){0};
+                }
+            } else {
+                return (Lex){.type = Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedIdIfDef};
+            }
+            break;
         case Else:
+            if (!(*if_depth)) {
+                return (Lex){.type = Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedIfElse};
+            }
+            lex = (Lex){0};
+            break;
         case ElseIf:
         case ElseIfDefined:
         case ElseIfNotDefined:
+            // TODO: Handle
+            if (!(*if_depth)) {
+                return (Lex){.type = Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedIfElse};
+            }
             lex = (Lex){0};
             break;
         case EndIf:
@@ -227,10 +251,40 @@ Lex preprocessed_lex_next(const char *input, size_t len, size_t *idx,
             lex = (Lex){0};
             break;
         case Line:
+            // TODO: Handle
+            lex = (Lex){0};
+            break;
         case Embed:
+            // TODO: Handle
+            lex = (Lex){0};
+            break;
         case Error:
+            lex = lex_next(input, len, idx, id_table);
+            if (lex.type == String) {
+                // TODO: Lines should be used
+                printf("#error %.*s at char %zu\n", (int)lex.span.len,
+                       input + lex.span.start, lex.span.start);
+                return (Lex){.type = Eof};
+            } else {
+                return (Lex){.type = Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedStringErrorMacro};
+            }
         case Warning:
+            lex = lex_next(input, len, idx, id_table);
+            if (lex.type == String) {
+                // TODO: Lines should be used
+                printf("#warning %.*s at char %zu\n", (int)lex.span.len,
+                       input + lex.span.start, lex.span.start);
+                lex = (Lex){0};
+            } else {
+                return (Lex){.type = Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedStringWarnMacro};
+            }
+            break;
         case Pragma:
+            // TODO: Handle
             lex = (Lex){0};
             break;
         }
@@ -242,4 +296,8 @@ Lex preprocessed_lex_next(const char *input, size_t len, size_t *idx,
     }
 
     return lex;
+}
+
+Macros *create_macros(size_t capacity) {
+    return create_dht(capacity, sizeof(size_t), sizeof(MacroDefine));
 }

@@ -11,7 +11,7 @@
 #ifdef __SSE2__
 #define GROUP_SIZE 16
 #include <emmintrin.h>
-#else
+#else // Note the 64 bit assumption
 #define GROUP_SIZE 8
 #endif
 
@@ -75,35 +75,27 @@ void clear_ht(HashTable *ht);
 #ifdef DYNAMIC_TABLE
 #include <stdlib.h>
 
-typedef struct DynHashTable {
-    size_t key_size;
-    size_t val_size;
-    size_t length;
-    size_t capacity;
-    uint8_t elems[];
-} DynHashTable;
-
 // `create_ht` dynamic variant, mallocs
-DynHashTable *create_dht(size_t len, size_t key_size, size_t val_size);
+HashTable *create_dht(size_t len, size_t key_size, size_t val_size);
 
 // `put_elem_ht` dynamic variant, mallocs and frees as necessary.
-uint32_t put_elem_dht(DynHashTable **dht, void *key, void *value);
+uint32_t put_elem_dht(HashTable **dht, void *key, void *value);
 
 // `get_elem_ht` dynamic variant, identical behaviour.
-void *get_elem_dht(DynHashTable *dht, void *key);
+void *get_elem_dht(HashTable *dht, void *key);
 
 // `delete_elem_ht` dynamic variant, identical behaviour.
 // Note that if table expands the tombstones will be deleted completely.
-uint32_t delete_elem_dht(DynHashTable *dht, void *key);
+uint32_t delete_elem_dht(HashTable *dht, void *key);
 
 // `next_elem_dht` dynamic variant, identical behaviour.
-Entry next_elem_dht(DynHashTable *dht, size_t *idx);
+Entry next_elem_dht(HashTable *dht, size_t *idx);
 
 // `clear_dht` dynamic variant, identical behaviour.
-void clear_dht(DynHashTable *dht);
+void clear_dht(HashTable *dht);
 
 // Frees malloced table
-void delete_dht(DynHashTable *dht);
+void delete_dht(HashTable *dht);
 #endif // DYNAMIC_TABLE
 
 #endif // GOT_H_

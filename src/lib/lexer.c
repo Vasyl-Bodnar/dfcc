@@ -3,7 +3,6 @@
    file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "lexer.h"
 #include <math.h>
-#include <stdlib.h>
 
 uint8_t key_len_table[KEY_COUNT] = {
     [KEY_alignas] = 7,
@@ -1223,6 +1222,12 @@ Lex lex_next(const char *input, size_t len, size_t *idx, Ids **id_table) {
     }
 
     return (Lex){.type = Eof};
+}
+
+Ids *create_ids(size_t capacity) { return create_vec(capacity, sizeof(Span)); }
+
+Lexes *create_lexes(size_t capacity) {
+    return create_vec(capacity, sizeof(Lex));
 }
 
 void print_ids(const char *input, const Ids *ids) {

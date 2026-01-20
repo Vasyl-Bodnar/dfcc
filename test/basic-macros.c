@@ -1,8 +1,8 @@
 #define id(x) x
-#define x id(123)
-#define y (id(x) + 23)
+#define x id(100)
+#define y (id(x) + 10)
 #define z
 
-#ifdef z
+#ifndef z
 int main(void) { return x + id(y); }
 #endif

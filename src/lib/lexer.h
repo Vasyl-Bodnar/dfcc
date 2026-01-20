@@ -7,7 +7,6 @@
 #include "vec.h"
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 enum lex_type {
     Invalid = 0,
@@ -94,6 +93,8 @@ enum lex_type {
 // TODO: Expand for better errors
 enum invalid_type {
     Ok = 0,
+    ExpectedStringErrorMacro, // #error has a bad string
+    ExpectedStringWarnMacro,  // #warning has a bad string
     UnfinishedChar,
     IllegalFloat,
     IllegalFloatHexSuffix,
@@ -102,10 +103,12 @@ enum invalid_type {
     IllegalEscapeChar,
     IllegalString,
     ExpectedIdMacroDefine,
+    ExpectedIdMacroUndefine,
     ExpectedGoodArgsMacroDefine,
     ExpectedNLAfterSlashMacroDefine,
     ExpectedIdIfDef,
     ExpectedIfEndIf,
+    ExpectedIfElse,
     FailedRealloc, // Dark times ahead
 };
 
@@ -209,6 +212,10 @@ typedef Vector Lexes;
 
 // Last character must be a newline
 Lex lex_next(const char *input, size_t len, size_t *idx, Ids **id_table);
+
+Ids *create_ids(size_t capacity);
+
+Lexes *create_lexes(size_t capacity);
 
 void print_lexes(const Lexes *lexes);
 
