@@ -17,4 +17,8 @@ Lex preprocessed_lex_next(const char *input, size_t len, size_t *idx,
 
 Macros *create_macros(size_t capacity);
 
+void print_macros(const char *input, Macros *macro_table);
+
+void free_macros(Macros *macro_table);
+
 #endif // PREPROCESSOR_H_

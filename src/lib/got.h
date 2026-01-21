@@ -23,7 +23,7 @@ uint64_t power_of_two(uint64_t x);
      (power_of_two(len) + power_of_two(len) % GROUP_SIZE) * val_size)
 
 // For now we utilize this simple hash function.
-uint64_t fnv1a_hash(uint8_t *input, size_t length);
+uint64_t fnv1a_hash(const uint8_t *input, const size_t length);
 
 typedef struct HashTable {
     size_t key_size;
@@ -41,27 +41,27 @@ typedef struct Entry {
 
 // Creates the table from memory.
 // Must have enough for the table, use `calc_ht_size`.
-HashTable *create_ht(void *memory, size_t len, size_t key_size,
-                     size_t val_size);
+HashTable *create_ht(void *memory, const size_t len, const size_t key_size,
+                     const size_t val_size);
 
 // Creates a new table from memory, copying in all elements from old_ht.
 // Does not change the old_ht.
-HashTable *create_from_ht(void *memory, HashTable *old_ht, size_t len);
+HashTable *create_from_ht(void *memory, HashTable *old_ht, const size_t len);
 
 // Returns 0 on failure, if it is too full.
 // If the key did not already exist, returns 1.
 // If the key did exist, the value is replaced, and 2 is returned.
-uint32_t put_elem_ht(HashTable *ht, void *key, void *value);
+uint32_t put_elem_ht(HashTable *ht, const void *key, const void *value);
 
 // Returns 0 if failed to find an element with that key.
 // Otherwise returns a reference.
 // The reference might become invalid if followed by a delete and put.
 // Can be used as `exists` given that non-zero output implies existance.
-void *get_elem_ht(HashTable *ht, void *key);
+void *get_elem_ht(HashTable *ht, const void *key);
 
 // Returns 0 if failed to find an element with that key.
 // Otherwise 1.
-uint32_t delete_elem_ht(HashTable *ht, void *key);
+uint32_t delete_elem_ht(HashTable *ht, const void *key);
 
 // Get the first live entry from the table starting at `idx`.
 // Returns pointers to key and value.
@@ -76,17 +76,18 @@ void clear_ht(HashTable *ht);
 #include <stdlib.h>
 
 // `create_ht` dynamic variant, mallocs
-HashTable *create_dht(size_t len, size_t key_size, size_t val_size);
+HashTable *create_dht(const size_t len, const size_t key_size,
+                      const size_t val_size);
 
 // `put_elem_ht` dynamic variant, mallocs and frees as necessary.
-uint32_t put_elem_dht(HashTable **dht, void *key, void *value);
+uint32_t put_elem_dht(HashTable **dht, const void *key, const void *value);
 
 // `get_elem_ht` dynamic variant, identical behaviour.
-void *get_elem_dht(HashTable *dht, void *key);
+void *get_elem_dht(HashTable *dht, const void *key);
 
 // `delete_elem_ht` dynamic variant, identical behaviour.
 // Note that if table expands the tombstones will be deleted completely.
-uint32_t delete_elem_dht(HashTable *dht, void *key);
+uint32_t delete_elem_dht(HashTable *dht, const void *key);
 
 // `next_elem_dht` dynamic variant, identical behaviour.
 Entry next_elem_dht(HashTable *dht, size_t *idx);

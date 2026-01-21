@@ -1,5 +1,7 @@
-{
+[
+  {
     "directory": "/home/vasyl/Projects/C/dfcc",
-    "command": "gcc -DDYNAMIC_TABLE -c src/main.c",
-    "file": "src/main.c"
-}
+    "command": "gcc -DDYNAMIC_TABLE -c src/lib/preprocessor.c",
+    "file": "src/lib/preprocessor.c"
+  }
+]

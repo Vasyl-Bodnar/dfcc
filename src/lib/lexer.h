@@ -109,6 +109,8 @@ enum invalid_type {
     ExpectedIdIfDef,
     ExpectedIfEndIf,
     ExpectedIfElse,
+    ExpectedIfElseDef,
+    ExpectedIfElseNotDef,
     FailedRealloc, // Dark times ahead
 };
 

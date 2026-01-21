@@ -46,10 +46,11 @@ int main(int argc, char *argv[]) {
 
     print_lexes(lexes);
     print_ids(buf, ids);
+    print_macros(buf, macros);
 
     free(lexes);
     free(ids);
-    free(macros);
+    free_macros(macros);
 
 Cleanup_buf_file:
     free(buf);
