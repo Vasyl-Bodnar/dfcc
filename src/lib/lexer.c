@@ -3,6 +3,8 @@
    file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "lexer.h"
 #include <math.h>
+#include <stdio.h>
+#include <string.h>
 
 uint8_t key_len_table[KEY_COUNT] = {
     [KEY_alignas] = 7,
@@ -120,22 +122,22 @@ Lex check_keyword(const char *input, Span span) {
     case 'a':
         if (span.len == key_len_table[KEY_auto] &&
             !memcmp("auto", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_auto};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_auto};
         } else if (span.len == key_len_table[KEY_alignas] &&
                    !memcmp("alignas", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_alignas};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_alignas};
         } else if (span.len == key_len_table[KEY_alignof] &&
                    !memcmp("alignof", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_alignof};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_alignof};
         }
         break;
     case 'b':
         if (span.len == key_len_table[KEY_break] &&
             !memcmp("break", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_break};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_break};
         } else if (span.len == key_len_table[KEY_bool] &&
                    !memcmp("bool", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_bool};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_bool};
         }
         break;
     case 'c':
@@ -143,97 +145,101 @@ Lex check_keyword(const char *input, Span span) {
             break;
         } else if (span.len == key_len_table[KEY_continue] &&
                    !memcmp("continue", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_continue};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY_continue};
         } else if (span.len == key_len_table[KEY_constexpr] &&
                    !memcmp("constexpr", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_constexpr};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY_constexpr};
         } else if (span.len == key_len_table[KEY_const] &&
                    !memcmp("const", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_const};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_const};
         } else if (span.len == key_len_table[KEY_char] &&
                    !memcmp("char", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_char};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_char};
         } else if (span.len == key_len_table[KEY_case] &&
                    !memcmp("case", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_case};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_case};
         }
         break;
     case 'd':
         if (span.len == key_len_table[KEY_do] &&
             !memcmp("do", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_do};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_do};
         } else if (span.len == key_len_table[KEY_double] &&
                    !memcmp("double", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_double};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_double};
         } else if (span.len == key_len_table[KEY_default] &&
                    !memcmp("default", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_default};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_default};
         }
         break;
     case 'e':
         if (span.len == key_len_table[KEY_extern] &&
             !memcmp("extern", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_extern};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_extern};
         } else if (span.len == key_len_table[KEY_enum] &&
                    !memcmp("enum", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_enum};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_enum};
         } else if (span.len == key_len_table[KEY_else] &&
                    !memcmp("else", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_else};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_else};
         }
         break;
     case 'f':
         if (span.len == key_len_table[KEY_for] &&
             !memcmp("for", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_for};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_for};
         } else if (span.len == key_len_table[KEY_float] &&
                    !memcmp("float", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_float};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_float};
         } else if (span.len == key_len_table[KEY_false] &&
                    !memcmp("false", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_false};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_false};
         }
         break;
     case 'g':
         if (span.len == key_len_table[KEY_goto] &&
             !memcmp("goto", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_goto};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_goto};
         }
         break;
     case 'i':
         if (span.len == key_len_table[KEY_int] &&
             !memcmp("int", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_int};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_int};
         } else if (span.len == key_len_table[KEY_inline] &&
                    !memcmp("inline", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_inline};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_inline};
         } else if (span.len == key_len_table[KEY_if] &&
                    !memcmp("if", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_if};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_if};
         }
         break;
     case 'l':
         if (span.len == key_len_table[KEY_long] &&
             !memcmp("long", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_long};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_long};
         }
         break;
     case 'n':
         if (span.len == key_len_table[KEY_nullptr] &&
             !memcmp("nullptr", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_nullptr};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_nullptr};
         }
         break;
     case 'r':
         if (span.len == key_len_table[KEY_return] &&
             !memcmp("return", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_return};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_return};
         } else if (span.len == key_len_table[KEY_restrict] &&
                    !memcmp("restrict", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_restrict};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY_restrict};
         } else if (span.len == key_len_table[KEY_register] &&
                    !memcmp("register", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_register};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY_register};
         }
         break;
     case 's':
@@ -241,26 +247,26 @@ Lex check_keyword(const char *input, Span span) {
             break;
         } else if (span.len == key_len_table[KEY_switch] &&
                    !memcmp("switch", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_switch};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_switch};
         } else if (span.len == key_len_table[KEY_struct] &&
                    !memcmp("struct", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_struct};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_struct};
         } else if (span.len == key_len_table[KEY_static_assert] &&
                    !memcmp("static_assert", input + span.start, span.len)) {
             return (Lex){
-                .type = Keyword, .span = span, .key = KEY_static_assert};
+                .type = LEX_Keyword, .span = span, .key = KEY_static_assert};
         } else if (span.len == key_len_table[KEY_static] &&
                    !memcmp("static", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_static};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_static};
         } else if (span.len == key_len_table[KEY_sizeof] &&
                    !memcmp("sizeof", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_sizeof};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_sizeof};
         } else if (span.len == key_len_table[KEY_signed] &&
                    !memcmp("signed", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_signed};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_signed};
         } else if (span.len == key_len_table[KEY_short] &&
                    !memcmp("short", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_short};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_short};
         }
         break;
     case 't':
@@ -269,44 +275,46 @@ Lex check_keyword(const char *input, Span span) {
         } else if (span.len == key_len_table[KEY_typeof_unqual] &&
                    !memcmp("typeof_unqual", input + span.start, span.len)) {
             return (Lex){
-                .type = Keyword, .span = span, .key = KEY_typeof_unqual};
+                .type = LEX_Keyword, .span = span, .key = KEY_typeof_unqual};
         } else if (span.len == key_len_table[KEY_typeof] &&
                    !memcmp("typeof", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_typeof};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_typeof};
         } else if (span.len == key_len_table[KEY_typedef] &&
                    !memcmp("typedef", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_typedef};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_typedef};
         } else if (span.len == key_len_table[KEY_true] &&
                    !memcmp("true", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_true};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_true};
         } else if (span.len == key_len_table[KEY_thread_local] &&
                    !memcmp("thread_local", input + span.start, span.len)) {
             return (Lex){
-                .type = Keyword, .span = span, .key = KEY_thread_local};
+                .type = LEX_Keyword, .span = span, .key = KEY_thread_local};
         }
         break;
     case 'u':
         if (span.len == key_len_table[KEY_union] &&
             !memcmp("union", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_union};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_union};
         } else if (span.len == key_len_table[KEY_unsigned] &&
                    !memcmp("unsigned", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_unsigned};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY_unsigned};
         }
         break;
     case 'v':
         if (span.len == key_len_table[KEY_void] &&
             !memcmp("void", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_void};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_void};
         } else if (span.len == key_len_table[KEY_volatile] &&
                    !memcmp("volatile", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_volatile};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY_volatile};
         }
         break;
     case 'w':
         if (span.len == key_len_table[KEY_while] &&
             !memcmp("while", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY_while};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY_while};
         }
         break;
     case '_':
@@ -314,31 +322,38 @@ Lex check_keyword(const char *input, Span span) {
             break;
         } else if (span.len == key_len_table[KEY__Noreturn] &&
                    !memcmp("_Noreturn", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY__Noreturn};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY__Noreturn};
         } else if (span.len == key_len_table[KEY__Imaginary] &&
                    !memcmp("_Imaginary", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY__Imaginary};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY__Imaginary};
         } else if (span.len == key_len_table[KEY__Generic] &&
                    !memcmp("_Generic", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY__Generic};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY__Generic};
         } else if (span.len == key_len_table[KEY__Decimal32] &&
                    !memcmp("_Decimal32", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY__Decimal32};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY__Decimal32};
         } else if (span.len == key_len_table[KEY__Decimal64] &&
                    !memcmp("_Decimal64", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY__Decimal64};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY__Decimal64};
         } else if (span.len == key_len_table[KEY__Decimal128] &&
                    !memcmp("_Decimal128", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY__Decimal128};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY__Decimal128};
         } else if (span.len == key_len_table[KEY__Complex] &&
                    !memcmp("_Complex", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY__Complex};
+            return (Lex){
+                .type = LEX_Keyword, .span = span, .key = KEY__Complex};
         } else if (span.len == key_len_table[KEY__BitInt] &&
                    !memcmp("_BitInt", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY__BitInt};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY__BitInt};
         } else if (span.len == key_len_table[KEY__Atomic] &&
                    !memcmp("_Atomic", input + span.start, span.len)) {
-            return (Lex){.type = Keyword, .span = span, .key = KEY__Atomic};
+            return (Lex){.type = LEX_Keyword, .span = span, .key = KEY__Atomic};
         }
         break;
     default:
@@ -375,7 +390,7 @@ Lex keyword_or_id(const char *input, size_t idx, Vector **id_table) {
             return (Lex){0};
         }
 
-        return (Lex){.type = Identifier,
+        return (Lex){.type = LEX_Identifier,
                      .span = span,
                      .id = search_id_table(input, span, id_table)};
     }
@@ -392,203 +407,225 @@ Lex macro(const char *input, size_t idx, size_t limit, Vector **id_table) {
             }
 
             if (!memcmp("define", input + span.start + 1, span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = Define};
             } else if (!memcmp("include", input + span.start + 1,
                                span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = Include};
             } else if (!memcmp("if", input + span.start + 1, span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = If};
             } else if (!memcmp("ifdef", input + span.start + 1, span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = IfDefined};
             } else if (!memcmp("ifndef", input + span.start + 1,
                                span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = IfNotDefined};
             } else if (!memcmp("else", input + span.start + 1, span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = Else};
             } else if (!memcmp("elif", input + span.start + 1, span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = ElseIf};
             } else if (!memcmp("elifdef", input + span.start + 1,
                                span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = ElseIfDefined};
             } else if (!memcmp("elifndef", input + span.start + 1,
                                span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = ElseIfNotDefined};
             } else if (!memcmp("endif", input + span.start + 1, span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = EndIf};
             } else if (!memcmp("line", input + span.start + 1, span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = Line};
             } else if (!memcmp("embed", input + span.start + 1, span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = Embed};
             } else if (!memcmp("error", input + span.start + 1, span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = Error};
             } else if (!memcmp("warning", input + span.start + 1,
                                span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = Warning};
             } else if (!memcmp("pragma", input + span.start + 1,
                                span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = Pragma};
             } else if (!memcmp("undef", input + span.start + 1, span.len - 1)) {
-                return (Lex){.type = MacroToken,
+                return (Lex){.type = LEX_MacroToken,
                              .span = {span.start, span.len},
                              .macro = Undefine};
             }
         } else if (input[idx + 1] == '#') {
-            return (Lex){.type = HashHash, .span = {.start = idx, .len = 2}};
+            return (Lex){.type = LEX_HashHash,
+                         .span = {.start = idx, .len = 2}};
         }
     }
-    return (Lex){.type = Hash, .span = {.start = idx, .len = 1}};
+    return (Lex){.type = LEX_Hash, .span = {.start = idx, .len = 1}};
 }
 
 Lex punctuator(const char *input, size_t idx, size_t limit, Vector **id_table) {
     switch (input[idx]) {
     case '[':
-        return (Lex){.type = LBracket, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_LBracket, .span = {.start = idx, .len = 1}};
     case ']':
-        return (Lex){.type = RBracket, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_RBracket, .span = {.start = idx, .len = 1}};
     case '(':
-        return (Lex){.type = LParen, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_LParen, .span = {.start = idx, .len = 1}};
     case ')':
-        return (Lex){.type = RParen, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_RParen, .span = {.start = idx, .len = 1}};
     case '{':
-        return (Lex){.type = LSquigly, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_LSquigly, .span = {.start = idx, .len = 1}};
     case '}':
-        return (Lex){.type = RSquigly, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_RSquigly, .span = {.start = idx, .len = 1}};
     case '.':
         if (input[idx + 1] == '.' && input[idx + 2] == '.') {
-            return (Lex){.type = DotDotDot, .span = {.start = idx, .len = 3}};
+            return (Lex){.type = LEX_DotDotDot,
+                         .span = {.start = idx, .len = 3}};
         }
-        return (Lex){.type = Dot, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_Dot, .span = {.start = idx, .len = 1}};
     case '&':
         if (input[idx + 1] == '&')
-            return (Lex){.type = EtEt, .span = {.start = idx, .len = 2}};
+            return (Lex){.type = LEX_EtEt, .span = {.start = idx, .len = 2}};
         else if (input[idx + 1] == '=')
-            return (Lex){.type = EtEqual, .span = {.start = idx, .len = 2}};
-        return (Lex){.type = Et, .span = {.start = idx, .len = 1}};
+            return (Lex){.type = LEX_EtEqual, .span = {.start = idx, .len = 2}};
+        return (Lex){.type = LEX_Et, .span = {.start = idx, .len = 1}};
     case '*':
         if (input[idx + 1] == '=') {
-            return (Lex){.type = StarEqual, .span = {.start = idx, .len = 2}};
-        }
-        return (Lex){.type = Star, .span = {.start = idx, .len = 1}};
-    case '+':
-        if (input[idx + 1] == '+')
-            return (Lex){.type = PlusPlus, .span = {.start = idx, .len = 2}};
-        else if (input[idx + 1] == '=')
-            return (Lex){.type = PlusEqual, .span = {.start = idx, .len = 2}};
-        return (Lex){.type = Plus, .span = {.start = idx, .len = 1}};
-    case '-':
-        if (input[idx + 1] == '>')
-            return (Lex){.type = Arrow, .span = {.start = idx, .len = 2}};
-        else if (input[idx + 1] == '-')
-            return (Lex){.type = MinusMinus, .span = {.start = idx, .len = 2}};
-        else if (input[idx + 1] == '=')
-            return (Lex){.type = MinusEqual, .span = {.start = idx, .len = 2}};
-        return (Lex){.type = Minus, .span = {.start = idx, .len = 1}};
-    case '~':
-        return (Lex){.type = Tilde, .span = {.start = idx, .len = 1}};
-    case '!':
-        if (input[idx + 1] == '=') {
-            return (Lex){.type = ExclamationEqual,
+            return (Lex){.type = LEX_StarEqual,
                          .span = {.start = idx, .len = 2}};
         }
-        return (Lex){.type = Exclamation, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_Star, .span = {.start = idx, .len = 1}};
+    case '+':
+        if (input[idx + 1] == '+')
+            return (Lex){.type = LEX_PlusPlus,
+                         .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == '=')
+            return (Lex){.type = LEX_PlusEqual,
+                         .span = {.start = idx, .len = 2}};
+        return (Lex){.type = LEX_Plus, .span = {.start = idx, .len = 1}};
+    case '-':
+        if (input[idx + 1] == '>')
+            return (Lex){.type = LEX_Arrow, .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == '-')
+            return (Lex){.type = LEX_MinusMinus,
+                         .span = {.start = idx, .len = 2}};
+        else if (input[idx + 1] == '=')
+            return (Lex){.type = LEX_MinusEqual,
+                         .span = {.start = idx, .len = 2}};
+        return (Lex){.type = LEX_Minus, .span = {.start = idx, .len = 1}};
+    case '~':
+        return (Lex){.type = LEX_Tilde, .span = {.start = idx, .len = 1}};
+    case '!':
+        if (input[idx + 1] == '=') {
+            return (Lex){.type = LEX_ExclamationEqual,
+                         .span = {.start = idx, .len = 2}};
+        }
+        return (Lex){.type = LEX_Exclamation, .span = {.start = idx, .len = 1}};
     case '/':
         if (input[idx + 1] == '=') {
-            return (Lex){.type = SlashEqual, .span = {.start = idx, .len = 2}};
+            return (Lex){.type = LEX_SlashEqual,
+                         .span = {.start = idx, .len = 2}};
         }
-        return (Lex){.type = Slash, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_Slash, .span = {.start = idx, .len = 1}};
     case '%':
         if (input[idx + 1] == ':' &&
             ((input[idx + 2] == '%' && input[idx + 3] == ':') ||
              input[idx + 2] == '#')) {
-            return (Lex){.type = HashHash, .span = {.start = idx, .len = 4}};
+            return (Lex){.type = LEX_HashHash,
+                         .span = {.start = idx, .len = 4}};
         } else if (input[idx + 1] == '=')
-            return (Lex){.type = PercentEqual,
+            return (Lex){.type = LEX_PercentEqual,
                          .span = {.start = idx, .len = 2}};
         else if (input[idx + 1] == '>')
-            return (Lex){.type = RSquigly, .span = {.start = idx, .len = 2}};
+            return (Lex){.type = LEX_RSquigly,
+                         .span = {.start = idx, .len = 2}};
         else if (input[idx + 1] == ':')
             return macro(input, idx, limit, id_table);
-        return (Lex){.type = Percent, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_Percent, .span = {.start = idx, .len = 1}};
     case '<':
         if (input[idx + 1] == '<') {
             if (input[idx + 2] == '=')
-                return (Lex){.type = LeftLeftEqual,
+                return (Lex){.type = LEX_LeftLeftEqual,
                              .span = {.start = idx, .len = 3}};
-            return (Lex){.type = LeftLeft, .span = {.start = idx, .len = 2}};
+            return (Lex){.type = LEX_LeftLeft,
+                         .span = {.start = idx, .len = 2}};
         } else if (input[idx + 1] == '=')
-            return (Lex){.type = LeftEqual, .span = {.start = idx, .len = 2}};
+            return (Lex){.type = LEX_LeftEqual,
+                         .span = {.start = idx, .len = 2}};
         else if (input[idx + 1] == ':')
-            return (Lex){.type = LBracket, .span = {.start = idx, .len = 2}};
+            return (Lex){.type = LEX_LBracket,
+                         .span = {.start = idx, .len = 2}};
         else if (input[idx + 1] == '%')
-            return (Lex){.type = LSquigly, .span = {.start = idx, .len = 2}};
-        return (Lex){.type = Left, .span = {.start = idx, .len = 1}};
+            return (Lex){.type = LEX_LSquigly,
+                         .span = {.start = idx, .len = 2}};
+        return (Lex){.type = LEX_Left, .span = {.start = idx, .len = 1}};
     case '>':
         if (input[idx + 1] == '>') {
             if (input[idx + 2] == '=')
-                return (Lex){.type = RightRightEqual,
+                return (Lex){.type = LEX_RightRightEqual,
                              .span = {.start = idx, .len = 3}};
-            return (Lex){.type = RightRight, .span = {.start = idx, .len = 2}};
+            return (Lex){.type = LEX_RightRight,
+                         .span = {.start = idx, .len = 2}};
         } else if (input[idx + 1] == '=')
-            return (Lex){.type = RightEqual, .span = {.start = idx, .len = 2}};
-        return (Lex){.type = Right, .span = {.start = idx, .len = 1}};
+            return (Lex){.type = LEX_RightEqual,
+                         .span = {.start = idx, .len = 2}};
+        return (Lex){.type = LEX_Right, .span = {.start = idx, .len = 1}};
     case '^':
         if (input[idx + 1] == '=') {
-            return (Lex){.type = CaretEqual, .span = {.start = idx, .len = 2}};
+            return (Lex){.type = LEX_CaretEqual,
+                         .span = {.start = idx, .len = 2}};
         }
-        return (Lex){.type = Caret, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_Caret, .span = {.start = idx, .len = 1}};
     case '|':
         if (input[idx + 1] == '|')
-            return (Lex){.type = PipePipe, .span = {.start = idx, .len = 2}};
+            return (Lex){.type = LEX_PipePipe,
+                         .span = {.start = idx, .len = 2}};
         else if (input[idx + 1] == '=')
-            return (Lex){.type = PipeEqual, .span = {.start = idx, .len = 2}};
-        return (Lex){.type = Pipe, .span = {.start = idx, .len = 1}};
+            return (Lex){.type = LEX_PipeEqual,
+                         .span = {.start = idx, .len = 2}};
+        return (Lex){.type = LEX_Pipe, .span = {.start = idx, .len = 1}};
     case '?':
-        return (Lex){.type = Question, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_Question, .span = {.start = idx, .len = 1}};
     case ':':
         if (input[idx + 1] == ':')
-            return (Lex){.type = ColonColon, .span = {.start = idx, .len = 2}};
+            return (Lex){.type = LEX_ColonColon,
+                         .span = {.start = idx, .len = 2}};
         else if (input[idx + 1] == '>')
-            return (Lex){.type = RBracket, .span = {.start = idx, .len = 2}};
-        return (Lex){.type = Colon, .span = {.start = idx, .len = 1}};
+            return (Lex){.type = LEX_RBracket,
+                         .span = {.start = idx, .len = 2}};
+        return (Lex){.type = LEX_Colon, .span = {.start = idx, .len = 1}};
     case ';':
-        return (Lex){.type = Semicolon, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_Semicolon, .span = {.start = idx, .len = 1}};
     case '=':
         if (input[idx + 1] == '=') {
-            return (Lex){.type = EqualEqual, .span = {.start = idx, .len = 2}};
+            return (Lex){.type = LEX_EqualEqual,
+                         .span = {.start = idx, .len = 2}};
         }
-        return (Lex){.type = Equal, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_Equal, .span = {.start = idx, .len = 1}};
     case ',':
-        return (Lex){.type = Comma, .span = {.start = idx, .len = 1}};
+        return (Lex){.type = LEX_Comma, .span = {.start = idx, .len = 1}};
     case '#':
         return macro(input, idx, limit, id_table);
     default:
@@ -600,19 +637,20 @@ Lex punctuator(const char *input, size_t idx, size_t limit, Vector **id_table) {
 Lex constant_char(const char *input, size_t idx, enum lex_type char_lex) {
     size_t offset;
     switch (char_lex) {
-    case ConstantChar:
+    case LEX_ConstantChar:
         offset = 0;
         break;
-    case ConstantCharU8:
+    case LEX_ConstantCharU8:
         offset = 2;
         break;
-    case ConstantCharU16:
-    case ConstantCharU32:
-    case ConstantCharWide:
+    case LEX_ConstantCharU16:
+    case LEX_ConstantCharU32:
+    case LEX_ConstantCharWide:
         offset = 1;
         break;
     default:
-        return (Lex){.type = Invalid, .span = {idx, 1}, .invalid = IllegalChar};
+        return (Lex){
+            .type = LEX_Invalid, .span = {idx, 1}, .invalid = IllegalChar};
     }
 
     if (input[idx + 1] == '\\') {
@@ -673,7 +711,7 @@ Lex constant_char(const char *input, size_t idx, enum lex_type char_lex) {
                                      .constant = (input[idx + 2] - '0') * 8 +
                                                  (input[idx + 3] - '0')};
                     }
-                    return (Lex){.type = Invalid,
+                    return (Lex){.type = LEX_Invalid,
                                  .span = {idx - offset, 4 + offset},
                                  .invalid = IllegalEscapeChar};
                 } else if (input[idx + 3] == '\'') {
@@ -683,7 +721,7 @@ Lex constant_char(const char *input, size_t idx, enum lex_type char_lex) {
                 }
             }
         }
-        return (Lex){.type = Invalid,
+        return (Lex){.type = LEX_Invalid,
                      .span = {idx - offset, 2 + offset},
                      .invalid = IllegalEscapeChar};
     Single_char:
@@ -692,7 +730,7 @@ Lex constant_char(const char *input, size_t idx, enum lex_type char_lex) {
                          .span = {idx - offset, 4 + offset},
                          .constant = c};
         }
-        return (Lex){.type = Invalid,
+        return (Lex){.type = LEX_Invalid,
                      .span = {idx - offset, 3 + offset},
                      .invalid = UnfinishedChar};
     }
@@ -703,7 +741,7 @@ Lex constant_char(const char *input, size_t idx, enum lex_type char_lex) {
                      .constant = input[idx + 1]};
     }
 
-    return (Lex){.type = Invalid,
+    return (Lex){.type = LEX_Invalid,
                  .span = {idx - offset, 2 + offset},
                  .invalid = UnfinishedChar};
 }
@@ -716,70 +754,70 @@ enum lex_type get_integer_suffix(const char *input, Span *span) {
         case 'l':
             if (input[span->start + span->len + 2] == 'l') {
                 span->len += 3;
-                return ConstantUnsignedLongLong;
+                return LEX_ConstantUnsignedLongLong;
             } else {
                 span->len += 2;
-                return ConstantUnsignedLong;
+                return LEX_ConstantUnsignedLong;
             }
         case 'L':
             if (input[span->start + span->len + 2] == 'L') {
                 span->len += 3;
-                return ConstantUnsignedLongLong;
+                return LEX_ConstantUnsignedLongLong;
             } else {
                 span->len += 2;
-                return ConstantUnsignedLong;
+                return LEX_ConstantUnsignedLong;
             }
         case 'w':
         case 'W':
             span->len += 2;
-            return ConstantUnsignedBitPrecise;
+            return LEX_ConstantUnsignedBitPrecise;
         default:
             span->len += 1;
-            return ConstantUnsigned;
+            return LEX_ConstantUnsigned;
         }
     case 'l':
         if (input[span->start + span->len + 1] == 'l') {
             if (input[span->start + span->len + 2] == 'u' ||
                 input[span->start + span->len + 2] == 'U') {
                 span->len += 3;
-                return ConstantUnsignedLongLong;
+                return LEX_ConstantUnsignedLongLong;
             }
             span->len += 2;
-            return ConstantLongLong;
+            return LEX_ConstantLongLong;
         } else if (input[span->start + span->len + 1] == 'u' ||
                    input[span->start + span->len + 1] == 'U') {
             span->len += 2;
-            return ConstantUnsignedLong;
+            return LEX_ConstantUnsignedLong;
         }
         span->len += 1;
-        return ConstantLong;
+        return LEX_ConstantLong;
     case 'L':
         if (input[span->start + span->len + 1] == 'L') {
             if (input[span->start + span->len + 2] == 'u' ||
                 input[span->start + span->len + 2] == 'U') {
                 span->len += 3;
-                return ConstantUnsignedLongLong;
+                return LEX_ConstantUnsignedLongLong;
             }
             span->len += 2;
-            return ConstantLongLong;
+            return LEX_ConstantLongLong;
         } else if (input[span->start + span->len + 1] == 'u' ||
                    input[span->start + span->len + 1] == 'U') {
             span->len += 2;
-            return ConstantUnsignedLong;
+            return LEX_ConstantUnsignedLong;
         }
         span->len += 1;
-        return ConstantLong;
+        return LEX_ConstantLong;
     case 'w':
     case 'W':
         if (input[span->start + span->len + 1] == 'u' ||
             input[span->start + span->len + 1] == 'U') {
             span->len += 2;
-            return ConstantUnsignedBitPrecise;
+            return LEX_ConstantUnsignedBitPrecise;
         }
         span->len += 1;
-        return ConstantBitPrecise;
+        return LEX_ConstantBitPrecise;
     default:
-        return Constant;
+        return LEX_Constant;
     }
 }
 
@@ -788,37 +826,37 @@ enum lex_type get_float_suffix(const char *input, Span *span) {
     case 'f':
     case 'F':
         span->len += 1;
-        return ConstantFloat;
+        return LEX_ConstantFloat;
     case 'l':
     case 'L':
         span->len += 1;
-        return ConstantLongDouble;
+        return LEX_ConstantLongDouble;
     case 'd':
         switch (input[span->start + span->len + 1]) {
         case 'f':
             span->len += 2;
-            return ConstantDecimal32;
+            return LEX_ConstantDecimal32;
         case 'd':
             span->len += 2;
-            return ConstantDecimal64;
+            return LEX_ConstantDecimal64;
         case 'l':
             span->len += 2;
-            return ConstantDecimal128;
+            return LEX_ConstantDecimal128;
         }
     case 'D':
         switch (input[span->start + span->len + 1]) {
         case 'F':
             span->len += 2;
-            return ConstantDecimal32;
+            return LEX_ConstantDecimal32;
         case 'D':
             span->len += 2;
-            return ConstantDecimal64;
+            return LEX_ConstantDecimal64;
         case 'L':
             span->len += 2;
-            return ConstantDecimal128;
+            return LEX_ConstantDecimal128;
         }
     default:
-        return ConstantDouble;
+        return LEX_ConstantDouble;
     }
 }
 
@@ -853,7 +891,7 @@ Lex dec_float_constant(const char *input, uint64_t root, Span span) {
 
         if (!digit(input[span.start + span.len])) {
             return (Lex){
-                .type = Invalid, .span = span, .invalid = IllegalFloat};
+                .type = LEX_Invalid, .span = span, .invalid = IllegalFloat};
         }
 
         while (digit(input[span.start + span.len])) {
@@ -937,7 +975,7 @@ Lex hex_float_constant(const char *input, uint64_t root, Span span) {
 
         if (!hex_digit(input[span.start + span.len])) {
             return (Lex){
-                .type = Invalid, .span = span, .invalid = IllegalFloat};
+                .type = LEX_Invalid, .span = span, .invalid = IllegalFloat};
         }
 
         while (hex_digit(input[span.start + span.len])) {
@@ -953,15 +991,18 @@ Lex hex_float_constant(const char *input, uint64_t root, Span span) {
 
         exp *= sign;
     } else {
-        return (Lex){
-            .type = Invalid, .span = span, .invalid = IllegalFloatHexExponent};
+        return (Lex){.type = LEX_Invalid,
+                     .span = span,
+                     .invalid = IllegalFloatHexExponent};
     }
 
     enum lex_type suffixed = get_float_suffix(input, &span);
-    if (suffixed == ConstantDecimal32 || suffixed == ConstantDecimal64 ||
-        suffixed == ConstantDecimal128) {
-        return (Lex){
-            .type = Invalid, .span = span, .invalid = IllegalFloatHexSuffix};
+    if (suffixed == LEX_ConstantDecimal32 ||
+        suffixed == LEX_ConstantDecimal64 ||
+        suffixed == LEX_ConstantDecimal128) {
+        return (Lex){.type = LEX_Invalid,
+                     .span = span,
+                     .invalid = IllegalFloatHexSuffix};
     }
 
     return (Lex){.type = suffixed,
@@ -1059,24 +1100,24 @@ Lex constant(const char *input, size_t idx) {
         }
         break;
     case '\'':
-        result = constant_char(input, idx, ConstantChar);
+        result = constant_char(input, idx, LEX_ConstantChar);
         break;
         // TODO: These need more proper handling
     case 'u':
         if (input[idx + 1] == '8' && input[idx + 2] == '\'') {
-            result = constant_char(input, idx + 2, ConstantCharU8);
+            result = constant_char(input, idx + 2, LEX_ConstantCharU8);
         } else if (input[idx + 1] == '\'') {
-            result = constant_char(input, idx + 1, ConstantCharU16);
+            result = constant_char(input, idx + 1, LEX_ConstantCharU16);
         }
         break;
     case 'U':
         if (input[idx + 1] == '\'') {
-            result = constant_char(input, idx + 1, ConstantCharU32);
+            result = constant_char(input, idx + 1, LEX_ConstantCharU32);
         }
         break;
     case 'L':
         if (input[idx + 1] == '\'') {
-            result = constant_char(input, idx + 1, ConstantCharWide);
+            result = constant_char(input, idx + 1, LEX_ConstantCharWide);
         }
         break;
     default:
@@ -1091,19 +1132,20 @@ Lex string_ret(const char *input, size_t idx, size_t limit,
     Span span = {idx, 1};
     size_t offset;
     switch (str_lex) {
-    case StringU8:
+    case LEX_StringU8:
         offset = 2;
         break;
-    case StringU16:
-    case StringU32:
-    case StringWide:
+    case LEX_StringU16:
+    case LEX_StringU32:
+    case LEX_StringWide:
         offset = 1;
         break;
-    case String:
+    case LEX_String:
         offset = 0;
         break;
     default:
-        return (Lex){.type = Invalid, .span = span, .invalid = IllegalString};
+        return (Lex){
+            .type = LEX_Invalid, .span = span, .invalid = IllegalString};
     }
 
     while (input[span.start + span.len] != '"') {
@@ -1115,7 +1157,7 @@ Lex string_ret(const char *input, size_t idx, size_t limit,
         }
 
         if (limit <= span.len) {
-            return (Lex){.type = Invalid,
+            return (Lex){.type = LEX_Invalid,
                          .span = {span.start - offset, span.len + offset},
                          .invalid = IllegalString};
         }
@@ -1130,17 +1172,19 @@ Lex string_ret(const char *input, size_t idx, size_t limit,
 
 Lex string(const char *input, size_t idx, size_t limit, Vector **id_table) {
     if (input[idx] == '"') {
-        return string_ret(input, idx, limit, String, id_table);
+        return string_ret(input, idx, limit, LEX_String, id_table);
     } else if (input[idx] == 'u') {
         if (input[idx + 1] == '8' && input[idx + 2] == '"') {
-            return string_ret(input, idx + 2, limit - 2, StringU8, id_table);
+            return string_ret(input, idx + 2, limit - 2, LEX_StringU8,
+                              id_table);
         } else if (input[idx + 1] == '"') {
-            return string_ret(input, idx + 1, limit - 1, StringU16, id_table);
+            return string_ret(input, idx + 1, limit - 1, LEX_StringU16,
+                              id_table);
         }
     } else if (input[idx] == 'U' && input[idx + 1] == '"') {
-        return string_ret(input, idx + 1, limit - 1, StringU32, id_table);
+        return string_ret(input, idx + 1, limit - 1, LEX_StringU32, id_table);
     } else if (input[idx] == 'L' && input[idx + 1] == '"') {
-        return string_ret(input, idx + 1, limit - 1, StringWide, id_table);
+        return string_ret(input, idx + 1, limit - 1, LEX_StringWide, id_table);
     }
 
     return (Lex){0};
@@ -1153,23 +1197,23 @@ Lex comment(const char *input, size_t idx, size_t limit) {
             while (input[span.start + span.len] != '\n') {
                 span.len += 1;
                 if (limit <= span.len) {
-                    return (Lex){.type = Eof};
+                    return (Lex){.type = LEX_Eof};
                 }
             }
-            return (Lex){.type = Comment, .span = span};
+            return (Lex){.type = LEX_Comment, .span = span};
         } else if (input[idx + 1] == '*') {
             Span span = {idx, 2};
             while (input[span.start + span.len] != '*' ||
                    input[span.start + span.len + 1] != '/') {
                 span.len += 1;
                 if (limit <= span.len + 1) {
-                    return (Lex){.type = Eof};
+                    return (Lex){.type = LEX_Eof};
                 }
             }
 
             span.len += 2;
 
-            return (Lex){.type = Comment, .span = span};
+            return (Lex){.type = LEX_Comment, .span = span};
         }
     }
 
@@ -1199,7 +1243,7 @@ Lex lex_next(const char *input, size_t len, size_t *idx, Ids **id_table) {
 
         lexed = comment(input, *idx, len - *idx);
         if (lexed.type) {
-            if (lexed.type == Eof) {
+            if (lexed.type == LEX_Eof) {
                 return lexed;
             } else {
                 *idx += lexed.span.len;
@@ -1215,13 +1259,14 @@ Lex lex_next(const char *input, size_t len, size_t *idx, Ids **id_table) {
 
         if (!space(input[*idx])) {
             *idx += 1;
-            return (Lex){
-                .type = Invalid, .span = {*idx - 1, 1}, .invalid = IllegalChar};
+            return (Lex){.type = LEX_Invalid,
+                         .span = {*idx - 1, 1},
+                         .invalid = IllegalChar};
         }
         *idx += 1;
     }
 
-    return (Lex){.type = Eof};
+    return (Lex){.type = LEX_Eof};
 }
 
 Ids *create_ids(size_t capacity) { return create_vec(capacity, sizeof(Span)); }
@@ -1241,114 +1286,114 @@ void print_lexes(const Lexes *lexes) {
     for (uint64_t i = 0; i < lexes->length; i++) {
         Lex lex = ((Lex *)lexes->v)[i];
         switch (lex.type) {
-        case Invalid:
+        case LEX_Invalid:
             printf(":Lex Error %d: [%zu, %zu]\n", lex.invalid, lex.span.start,
                    lex.span.len);
             break;
-        case Eof:
+        case LEX_Eof:
             printf(":End of File: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case StringU8:
+        case LEX_StringU8:
             printf(":StringU8 id %zu: [%zu, %zu]\n", lex.id, lex.span.start,
                    lex.span.len);
             break;
-        case StringU16:
+        case LEX_StringU16:
             printf(":StringU16 id %zu: [%zu, %zu]\n", lex.id, lex.span.start,
                    lex.span.len);
             break;
-        case StringU32:
+        case LEX_StringU32:
             printf(":StringU32 id %zu: [%zu, %zu]\n", lex.id, lex.span.start,
                    lex.span.len);
             break;
-        case StringWide:
+        case LEX_StringWide:
             printf(":StringWide id %zu: [%zu, %zu]\n", lex.id, lex.span.start,
                    lex.span.len);
             break;
-        case String:
+        case LEX_String:
             printf(":String id %zu: [%zu, %zu]\n", lex.id, lex.span.start,
                    lex.span.len);
             break;
-        case Identifier:
+        case LEX_Identifier:
             printf(":Identifier id %zu: [%zu, %zu]\n", lex.id, lex.span.start,
                    lex.span.len);
             break;
-        case ConstantUnsignedLongLong:
+        case LEX_ConstantUnsignedLongLong:
             printf(":UnsidgnedLongLongNumber %zu: [%zu, %zu]\n", lex.constant,
                    lex.span.start, lex.span.len);
             break;
-        case ConstantUnsignedLong:
+        case LEX_ConstantUnsignedLong:
             printf(":UnsidgnedLongNumber %zu: [%zu, %zu]\n", lex.constant,
                    lex.span.start, lex.span.len);
             break;
-        case ConstantUnsignedBitPrecise:
+        case LEX_ConstantUnsignedBitPrecise:
             printf(":UnsidgnedBitPreciseNumber %zu: [%zu, %zu]\n", lex.constant,
                    lex.span.start, lex.span.len);
             break;
-        case ConstantUnsigned:
+        case LEX_ConstantUnsigned:
             printf(":UnsidgnedNumber %zu: [%zu, %zu]\n", lex.constant,
                    lex.span.start, lex.span.len);
             break;
-        case ConstantLongLong:
+        case LEX_ConstantLongLong:
             printf(":LongLongNumber %zu: [%zu, %zu]\n", lex.constant,
                    lex.span.start, lex.span.len);
             break;
-        case ConstantLong:
+        case LEX_ConstantLong:
             printf(":LongNumber %zu: [%zu, %zu]\n", lex.constant,
                    lex.span.start, lex.span.len);
             break;
-        case ConstantBitPrecise:
+        case LEX_ConstantBitPrecise:
             printf(":BitPreciseNumber %zu: [%zu, %zu]\n", lex.constant,
                    lex.span.start, lex.span.len);
             break;
-        case Constant:
+        case LEX_Constant:
             printf(":Number %zu: [%zu, %zu]\n", lex.constant, lex.span.start,
                    lex.span.len);
             break;
-        case ConstantFloat:
+        case LEX_ConstantFloat:
             printf(":Float %f: [%zu, %zu]\n", lex.floating, lex.span.start,
                    lex.span.len);
             break;
-        case ConstantDouble:
+        case LEX_ConstantDouble:
             printf(":Double %f: [%zu, %zu]\n", lex.floating, lex.span.start,
                    lex.span.len);
             break;
-        case ConstantLongDouble:
+        case LEX_ConstantLongDouble:
             printf(":LongDouble %f: [%zu, %zu]\n", lex.floating, lex.span.start,
                    lex.span.len);
             break;
-        case ConstantDecimal32:
+        case LEX_ConstantDecimal32:
             printf(":Dec32 %f: [%zu, %zu]\n", lex.floating, lex.span.start,
                    lex.span.len);
             break;
-        case ConstantDecimal64:
+        case LEX_ConstantDecimal64:
             printf(":Dec64 %f: [%zu, %zu]\n", lex.floating, lex.span.start,
                    lex.span.len);
             break;
-        case ConstantDecimal128:
+        case LEX_ConstantDecimal128:
             printf(":Dec128 %f: [%zu, %zu]\n", lex.floating, lex.span.start,
                    lex.span.len);
             break;
-        case ConstantCharU8:
+        case LEX_ConstantCharU8:
             printf(":CharU8 %zu: [%zu, %zu]\n", lex.constant, lex.span.start,
                    lex.span.len);
             break;
-        case ConstantCharU16:
+        case LEX_ConstantCharU16:
             printf(":CharU16 %zu: [%zu, %zu]\n", lex.constant, lex.span.start,
                    lex.span.len);
             break;
-        case ConstantCharU32:
+        case LEX_ConstantCharU32:
             printf(":CharU32 %zu: [%zu, %zu]\n", lex.constant, lex.span.start,
                    lex.span.len);
             break;
-        case ConstantCharWide:
+        case LEX_ConstantCharWide:
             printf(":CharWide %zu: [%zu, %zu]\n", lex.constant, lex.span.start,
                    lex.span.len);
             break;
-        case ConstantChar:
+        case LEX_ConstantChar:
             printf(":Char %zu: [%zu, %zu]\n", lex.constant, lex.span.start,
                    lex.span.len);
             break;
-        case Keyword:
+        case LEX_Keyword:
             switch (lex.key) {
             case KEY_alignas:
                 printf(":Keyword alignas: [%zu, %zu]\n", lex.span.start,
@@ -1570,160 +1615,160 @@ void print_lexes(const Lexes *lexes) {
                 break;
             }
             break;
-        case MacroToken:
+        case LEX_MacroToken:
             printf(":MacroToken: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case LBracket:
+        case LEX_LBracket:
             printf(":LBracket: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case RBracket:
+        case LEX_RBracket:
             printf(":RBracket: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case LParen:
+        case LEX_LParen:
             printf(":LParen: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case RParen:
+        case LEX_RParen:
             printf(":RParen: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case LSquigly:
+        case LEX_LSquigly:
             printf(":LSquigly: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case RSquigly:
+        case LEX_RSquigly:
             printf(":RSquigly: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Dot:
+        case LEX_Dot:
             printf(":Dot: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Arrow:
+        case LEX_Arrow:
             printf(":Arrow: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case PlusPlus:
+        case LEX_PlusPlus:
             printf(":PlusPlus: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case MinusMinus:
+        case LEX_MinusMinus:
             printf(":MinusMinus: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Et:
+        case LEX_Et:
             printf(":Et: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Star:
+        case LEX_Star:
             printf(":Star: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Plus:
+        case LEX_Plus:
             printf(":Plus: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Minus:
+        case LEX_Minus:
             printf(":Minus: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Tilde:
+        case LEX_Tilde:
             printf(":Tilde: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Exclamation:
+        case LEX_Exclamation:
             printf(":Exclamation: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Slash:
+        case LEX_Slash:
             printf(":Slash: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Percent:
+        case LEX_Percent:
             printf(":Percent: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case LeftLeft:
+        case LEX_LeftLeft:
             printf(":LeftLeft: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case RightRight:
+        case LEX_RightRight:
             printf(":RightRight: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Left:
+        case LEX_Left:
             printf(":Left: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Right:
+        case LEX_Right:
             printf(":Right: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case LeftEqual:
+        case LEX_LeftEqual:
             printf(":LeftEqual: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case RightEqual:
+        case LEX_RightEqual:
             printf(":RightEqual: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case EqualEqual:
+        case LEX_EqualEqual:
             printf(":EqualEqual: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case ExclamationEqual:
+        case LEX_ExclamationEqual:
             printf(":ExclamationEqual: [%zu, %zu]\n", lex.span.start,
                    lex.span.len);
             break;
-        case Caret:
+        case LEX_Caret:
             printf(":Caret: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Pipe:
+        case LEX_Pipe:
             printf(":Pipe: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case EtEt:
+        case LEX_EtEt:
             printf(":EtEt: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case PipePipe:
+        case LEX_PipePipe:
             printf(":PipePipe: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Question:
+        case LEX_Question:
             printf(":Question: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Colon:
+        case LEX_Colon:
             printf(":Colon: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case ColonColon:
+        case LEX_ColonColon:
             printf(":ColonColon: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Semicolon:
+        case LEX_Semicolon:
             printf(":Semicolon: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case DotDotDot:
+        case LEX_DotDotDot:
             printf(":DotDotDot: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Equal:
+        case LEX_Equal:
             printf(":Equal: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case StarEqual:
+        case LEX_StarEqual:
             printf(":StarEqual: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case SlashEqual:
+        case LEX_SlashEqual:
             printf(":SlashEqual: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case PercentEqual:
+        case LEX_PercentEqual:
             printf(":PercentEqual: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case PlusEqual:
+        case LEX_PlusEqual:
             printf(":PlusEqual: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case MinusEqual:
+        case LEX_MinusEqual:
             printf(":MinusEqual: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case LeftLeftEqual:
+        case LEX_LeftLeftEqual:
             printf(":LeftLeftEqual: [%zu, %zu]\n", lex.span.start,
                    lex.span.len);
             break;
-        case RightRightEqual:
+        case LEX_RightRightEqual:
             printf(":RightRightEqual: [%zu, %zu]\n", lex.span.start,
                    lex.span.len);
             break;
-        case EtEqual:
+        case LEX_EtEqual:
             printf(":EtEqual: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case CaretEqual:
+        case LEX_CaretEqual:
             printf(":CaretEqual: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case PipeEqual:
+        case LEX_PipeEqual:
             printf(":PipeEqual: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Comma:
+        case LEX_Comma:
             printf(":Comma: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Hash:
+        case LEX_Hash:
             printf(":Hash: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case HashHash:
+        case LEX_HashHash:
             printf(":HashHash: [%zu, %zu]\n", lex.span.start, lex.span.len);
             break;
-        case Comment:
+        case LEX_Comment:
             break;
         }
     }

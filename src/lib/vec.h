@@ -6,8 +6,8 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 
+// Generic Vector Type
 typedef struct Vector {
     size_t value_size;
     size_t length;
@@ -20,15 +20,44 @@ Vector *create_vec(size_t len, size_t value_size);
 // Push element, grows with *3/2, ups to 3 beforehand if less than 4
 uint32_t push_elem_vec(Vector **v, const void *value);
 
-// Checked at, returns 0 if not found
-void *at_vec(Vector *v, size_t idx);
+// Unchecked peek, must contain more than 0 elements
+void *peek_elem_vec(Vector *v);
 
-// Checked memcpy, returns 0 if not found
-uint32_t get_elem_vec(Vector *v, size_t idx, void *value);
+// Unchecked pop, must contain more than 0 elements
+void pop_elem_vec(Vector *v);
+
+// Checked at, returns 0 if not found
+void *at_elem_vec(Vector *v, size_t idx);
 
 // Unchecked memcpy
-void get_nocheck_elem_vec(Vector *v, size_t idx, void *value);
+void get_elem_vec(Vector *v, size_t idx, void *value);
 
 void delete_vec(Vector *v);
+
+// String Vector Type
+typedef struct String {
+    size_t length;
+    size_t capacity;
+    char s[];
+} String;
+
+String *create_str(size_t len);
+
+// Create a str using an existing cstr
+String *from_cstr(char *cs);
+
+// Push char, grows with *3/2, ups to 3 beforehand if less than 4
+uint32_t push_elem_str(String **s, char value);
+
+// Unchecked peek, must contain more than 0 elements
+char peek_elem_str(String *s);
+
+// Unchecked pop, must contain more than 0 elements
+void pop_elem_str(String *s);
+
+// push_elem, just in a single batch
+uint32_t push_slice_str(String **s, char *start, size_t len);
+
+void delete_str(String *s);
 
 #endif // VEC_H

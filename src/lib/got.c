@@ -3,6 +3,14 @@
    file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "got.h"
 
+#if !(defined(memcpy) && defined(memcmp))
+#include <string.h>
+#endif
+
+#ifndef hash
+#define hash fnv1a_hash
+#endif
+
 uint64_t power_of_two(uint64_t x) {
     if (x <= 1) {
         return 1;
@@ -23,7 +31,6 @@ uint64_t power_of_two(uint64_t x) {
     ((len + (len % GROUP_SIZE)) * (key_size + 1) +                             \
      (len + (len % GROUP_SIZE)) * val_size)
 
-// Simple hash to use while we don't have a better one
 uint64_t fnv1a_hash(const uint8_t *input, const size_t length) {
     uint64_t init = 12698850840868882907ull;
     for (size_t i = 0; i < length; i++) {
@@ -287,12 +294,17 @@ void clear_ht(HashTable *ht) {
     memset(ht->elems, 0x80, calc_control_size(ht->capacity));
 }
 
-// Malloc+growth wrappers over non-dynamic variants
-// Potentially allow providing own alloc function
 #ifdef DYNAMIC_TABLE
+
+#if !(defined(alloc) && defined(dealloc))
+#include <stdlib.h>
+#define alloc malloc
+#define dealloc free
+#endif
+
 HashTable *create_dht(const size_t len, const size_t key_size,
                       const size_t val_size) {
-    void *mem = malloc(calc_ht_size(len, key_size, val_size));
+    void *mem = alloc(calc_ht_size(len, key_size, val_size));
     return create_ht(mem, len, key_size, val_size);
 }
 
@@ -337,5 +349,5 @@ void clear_dht(HashTable *dht) {
     memset(dht->elems, 0, calc_control_size(dht->capacity));
 }
 
-void delete_dht(HashTable *dht) { free(dht); }
+void delete_dht(HashTable *dht) { dealloc(dht); }
 #endif // DYNAMIC_TABLE

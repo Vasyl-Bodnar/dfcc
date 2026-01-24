@@ -5,7 +5,8 @@
 #define GOT_H_
 
 #include <stdint.h>
-#include <string.h>
+// You can provide your own memcpy and memcmp by #defining them
+// Same interface is expected
 
 // Fairly certain this is a default on (x86) 64 bit systems anyway
 #ifdef __SSE2__
@@ -22,9 +23,11 @@ uint64_t power_of_two(uint64_t x);
      (power_of_two(len) + power_of_two(len) % GROUP_SIZE) * (key_size + 1) +   \
      (power_of_two(len) + power_of_two(len) % GROUP_SIZE) * val_size)
 
-// For now we utilize this simple hash function.
+// We have this simple hash function, but you can `#define hash your_hash`
+// Same interface is expected
 uint64_t fnv1a_hash(const uint8_t *input, const size_t length);
 
+// TODO: Consider adding specialized tables for strings and integers
 typedef struct HashTable {
     size_t key_size;
     size_t val_size;
@@ -72,9 +75,10 @@ Entry next_elem_ht(HashTable *ht, size_t *idx);
 // Clears the table for reuse
 void clear_ht(HashTable *ht);
 
+// Alloc+growth wrappers over non-dynamic variants
+// You can provide your own malloc and free.
+// Simply #define `alloc` and `dealloc` (same interface expected)
 #ifdef DYNAMIC_TABLE
-#include <stdlib.h>
-
 // `create_ht` dynamic variant, mallocs
 HashTable *create_dht(const size_t len, const size_t key_size,
                       const size_t val_size);
