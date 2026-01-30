@@ -101,6 +101,7 @@ enum invalid_type {
     IllegalChar,
     IllegalEscapeChar,
     IllegalString,
+    ExpectedValidIncludeFile,
     ExpectedIncludeHeader,
     ExpectedIdMacroDefine,
     ExpectedIdMacroUndefine,
@@ -192,7 +193,7 @@ enum macro_type {
 };
 
 typedef struct Span {
-    size_t start;
+    char *start;
     size_t len;
 } Span;
 
@@ -221,6 +222,6 @@ Lexes *create_lexes(size_t capacity);
 
 void print_lexes(const Lexes *lexes);
 
-void print_ids(const char *input, const Ids *id_table);
+void print_ids(const Ids *id_table);
 
 #endif // LEXER_H_

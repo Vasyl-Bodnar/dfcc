@@ -2,7 +2,9 @@
 #include "got.h"
 #include "lexer.h"
 #include "limits.h"
+#include "string.h"
 #include "vec.h"
+#include <sys/stat.h>
 
 /*
   // Legal macro expr lexes
@@ -59,18 +61,18 @@ Lex process_define(const char *input, size_t len, size_t *idx, Ids **id_table,
             }
         }
 
-        Span span = {*idx, 1};
-        while (input[span.start + span.len] != '\n') {
+        Span span = {(char *)input + *idx, 1};
+        while (*(span.start + span.len) != '\n') {
             span.len += 1;
-            if (input[span.start + span.len] == '\\') {
-                if (input[span.start + span.len + 1] == '\n') {
+            if (*(span.start + span.len) == '\\') {
+                if (*(span.start + span.len + 1) == '\n') {
                     span.len += 2;
                 } else {
                     return (Lex){.type = LEX_Invalid,
                                  .span = id.span,
                                  .invalid = ExpectedNLAfterSlashMacroDefine};
                 }
-            } else if (input[span.start + span.len] == '\0') {
+            } else if (*(span.start + span.len) == '\0') {
                 result = (Lex){.type = LEX_Eof};
             }
         }
@@ -226,18 +228,79 @@ Lex if_not_defined(const char *input, size_t len, size_t *idx, size_t *if_depth,
     return lex;
 }
 
-IncludeFile *process_include(char *filename, char *include) {
-    // char path[PATH_MAX];
-    return 0;
+// NOTE: This makes a hefty assumption that our path is always PATH_MAX at most
+uint32_t process_include(const char *include, size_t len,
+                         IncludeStack **incl_stack, Includes **includes) {
+    IncludeFile *top = get_top_include(*incl_stack, *includes);
+    char path[PATH_MAX];
+
+    realpath(top->path->s, path);
+    size_t path_len = strlen(path);
+
+    for (; path[path_len] != '/'; path_len--)
+        ;
+
+    memcpy(path + path_len + 1, include, len);
+    path[path_len + 1 + len] = '\0';
+
+    for (size_t i = 0; i < (*includes)->length; i++) {
+        IncludeFile *incl = (IncludeFile *)(*includes)->v + i;
+        if (!incl->idx && incl->path->length == path_len + 2 + len &&
+            !memcmp(incl->path->s, path, incl->path->length)) {
+            push_elem_vec(incl_stack, &i);
+            return 1;
+        }
+    }
+
+    FILE *file = fopen(path, "r");
+    struct stat st_buf;
+
+    fstat(fileno(file), &st_buf);
+
+    char *buf = malloc(st_buf.st_size + 1);
+    size_t bytes = fread(buf, 1, st_buf.st_size, file);
+    fclose(file);
+
+    // TODO: Better messages (and system)
+    if (bytes == 0) {
+        printf("Invalid include file: %s\n", path);
+        free(buf);
+        return 0;
+    }
+
+    if (buf[bytes - 1] != '\\') {
+        buf[bytes] = '\n';
+    } else {
+        printf("Last character cannot be '\\' for file: %s\n", path);
+        free(buf);
+        return 0;
+    }
+
+    String *file_path = from_cstr(path);
+
+    push_elem_vec(includes,
+                  &(IncludeFile){
+                      .path = file_path, .idx = 0, .input = buf, .len = bytes});
+
+    size_t new_top_id = (*includes)->length - 1;
+    push_elem_vec(incl_stack, &new_top_id);
+    return 1;
 }
 
 Lex include_file(const char *input, size_t len, size_t *idx,
-                 IncludeStack **incl_stack, Ids **id_table) {
+                 IncludeStack **incl_stack, Includes **includes,
+                 Ids **id_table) {
     Lex lex = lex_next(input, len, idx, id_table);
     if (lex.type == LEX_Left) {
         // TODO: Parse out a filename, Add to include stack
     } else if (lex.type == LEX_String) {
-        // TODO: Add to include stack
+        Span str = ((Span *)(*id_table)->v)[lex.id];
+        if (!process_include(str.start + 1, str.len - 2, incl_stack,
+                             includes)) {
+            return (Lex){.type = LEX_Invalid,
+                         .span = lex.span,
+                         .invalid = ExpectedValidIncludeFile};
+        }
     } else {
         return (Lex){.type = LEX_Invalid,
                      .span = lex.span,
@@ -249,11 +312,13 @@ Lex include_file(const char *input, size_t len, size_t *idx,
 // TODO: Macros should be first characters of the line.
 //       Lexer does not handle this currently
 Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
-                          Ids **id_table, Macros **macro_table) {
-    IncludeFile *file = peek_elem_vec(*incl_stack);
+                          Ids **id_table, Includes **includes,
+                          Macros **macro_table) {
+    IncludeFile *file = get_top_include(*incl_stack, *includes);
     char *input = file->input;
     size_t len = file->len;
     size_t *idx = &file->idx;
+
     Lex lex = lex_next(input, len, idx, id_table);
 
     if (lex.type == LEX_Identifier) {
@@ -267,7 +332,7 @@ Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
             lex = process_define(input, len, idx, id_table, macro_table);
             break;
         case Include:
-            lex = include_file(input, len, idx, incl_stack, id_table);
+            lex = include_file(input, len, idx, incl_stack, includes, id_table);
             break;
         case Undefine: {
             // TODO: Find a better way
@@ -348,8 +413,8 @@ Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
             lex = lex_next(input, len, idx, id_table);
             if (lex.type == LEX_String) {
                 // TODO: Lines should be used
-                printf("#error %.*s at char %zu\n", (int)lex.span.len,
-                       input + lex.span.start, lex.span.start);
+                printf("#error %.*s before char %zu\n", (int)lex.span.len,
+                       lex.span.start, lex.span.len);
                 return (Lex){.type = LEX_Eof};
             } else {
                 return (Lex){.type = LEX_Invalid,
@@ -360,8 +425,8 @@ Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
             lex = lex_next(input, len, idx, id_table);
             if (lex.type == LEX_String) {
                 // TODO: Lines should be used
-                printf("#warning %.*s at char %zu\n", (int)lex.span.len,
-                       input + lex.span.start, lex.span.start);
+                printf("#warning %.*s before char %zu\n", (int)lex.span.len,
+                       lex.span.start, lex.span.len);
                 lex = (Lex){0};
             } else {
                 return (Lex){.type = LEX_Invalid,
@@ -377,7 +442,7 @@ Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
     }
 
     if (!lex.type && lex.invalid == Ok) {
-        return preprocessed_lex_next(incl_stack, if_depth, id_table,
+        return preprocessed_lex_next(incl_stack, if_depth, id_table, includes,
                                      macro_table);
     }
 
@@ -388,11 +453,11 @@ Macros *create_macros(size_t capacity) {
     return create_dht(capacity, sizeof(size_t), sizeof(MacroDefine));
 }
 
-void print_macros(const char *input, Macros *macro_table) {
+void print_macros(Macros *macro_table) {
     Entry entry;
     size_t idx = 0;
     while ((entry = next_elem_dht(macro_table, &idx)).key) {
-        printf("(id: %zu args: %p span: [%zu, %zu])\n", *(size_t *)entry.key,
+        printf("(id: %zu args: %p span: [%p, %zu])\n", *(size_t *)entry.key,
                ((MacroDefine *)entry.value)->args,
                ((MacroDefine *)entry.value)->span.start,
                ((MacroDefine *)entry.value)->span.len);
@@ -408,23 +473,41 @@ void free_macros(Macros *macro_table) {
     free(macro_table);
 }
 
-IncludeStack *create_include_stack(size_t capacity) {
+Includes *create_includes(size_t capacity) {
     return create_vec(capacity, sizeof(IncludeFile));
+}
+
+void print_includes(Includes *includes) {
+    for (size_t i = 0; i < includes->length; i++) {
+        IncludeFile *file = ((IncludeFile *)includes->v) + i;
+        printf("(path: %s ptr: %p len: %zu idx: %zu)\n", file->path->s,
+               file->input, file->len, file->idx);
+    }
+}
+
+void free_includes(Includes *includes) {
+    for (size_t i = 0; i < includes->length; i++) {
+        IncludeFile *file = ((IncludeFile *)includes->v) + i;
+        free(file->input);
+        delete_str(file->path);
+    }
+    free(includes);
+}
+
+IncludeStack *create_include_stack(size_t capacity) {
+    return create_vec(capacity, sizeof(size_t));
+}
+
+IncludeFile *get_top_include(IncludeStack *incl_stack, Includes *includes) {
+    size_t *top_id = peek_elem_vec(incl_stack);
+    return ((IncludeFile *)(includes->v)) + *top_id;
 }
 
 void print_include_stack(IncludeStack *incl_stack) {
     for (size_t i = 0; i < incl_stack->length; i++) {
-        IncludeFile *file = ((IncludeFile *)incl_stack->v) + i;
-        printf("(ptr: %p len: %zu idx: %zu)\n", file->input, file->len,
-               file->idx);
+        size_t *id = ((size_t *)incl_stack->v) + i;
+        printf("(include_id: %zu)\n", *id);
     }
 }
 
-void free_include_stack(IncludeStack *incl_stack) {
-    for (size_t i = 0; i < incl_stack->length; i++) {
-        IncludeFile *file = ((IncludeFile *)incl_stack->v) + i;
-        fclose(file->file);
-        delete_str(file->path);
-    }
-    free(incl_stack);
-}
+void free_include_stack(IncludeStack *incl_stack) { free(incl_stack); }

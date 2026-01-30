@@ -24,8 +24,9 @@ int main(int argc, char *argv[]) {
 
     size_t bytes = fread(buf, 1, st_buf.st_size, file);
 
+    fclose(file);
+
     if (bytes == 0) {
-        fclose(file);
         free(buf);
         return 1;
     }
@@ -34,37 +35,46 @@ int main(int argc, char *argv[]) {
         buf[bytes] = '\n';
     } else {
         puts("Last character cannot be '\\'");
-        fclose(file);
         free(buf);
         return 1;
     }
 
-    IncludeStack *incl_stack = create_include_stack(4);
-    Lexes *lexes = create_lexes(16);
-    Ids *ids = create_ids(8);
+    IncludeStack *incl_stack = create_include_stack(16);
+    Lexes *lexes = create_lexes(32);
+    Ids *ids = create_ids(16);
+    Includes *includes = create_includes(4);
     Macros *macros = create_macros(8);
 
     String *path = from_cstr(argv[1]);
     push_elem_vec(
-        &incl_stack,
-        &(IncludeFile){
-            .file = file, .path = path, .input = buf, .len = bytes, .idx = 0});
+        &includes,
+        &(IncludeFile){.path = path, .input = buf, .len = bytes, .idx = 0});
+
+    size_t incl_id = 0;
+    push_elem_vec(&incl_stack, &incl_id);
 
     Lex lex;
     size_t depth = 0;
-    do {
-        lex = preprocessed_lex_next(&incl_stack, &depth, &ids, &macros);
-        push_elem_vec(&lexes, &lex);
-    } while (lex.type != LEX_Eof);
+    while (incl_stack->length) {
+        do {
+            lex = preprocessed_lex_next(&incl_stack, &depth, &ids, &includes,
+                                        &macros);
+            push_elem_vec(&lexes, &lex);
+        } while (lex.type != LEX_Eof);
+        IncludeFile *file = get_top_include(incl_stack, includes);
+        file->idx = 0;
+        pop_elem_vec(incl_stack);
+    }
 
     print_lexes(lexes);
-    print_ids(buf, ids);
-    print_macros(buf, macros);
-    print_include_stack(incl_stack);
+    print_ids(ids);
+    print_macros(macros);
+    print_includes(includes);
 
     free(lexes);
     free(ids);
     free_macros(macros);
+    free_includes(includes);
     free_include_stack(incl_stack);
 
     return 0;

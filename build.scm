@@ -7,14 +7,15 @@
 (add-to-load-path ".")
 (use-modules (buildlib))
 
-(configure #:exe-name "dfcc" ;;#:lib-source-dir "src/lib" #:lib-name "libdfcc" #:lib-type 'both)
-           #:link '("m")
-           #:derive '(DYNAMIC_TABLE))
+(define clean? (memq #t (map (lambda (x) (equal? "clean" x))
+                             (command-line))))
+(define install? (memq #t (map (lambda (x) (equal? "install" x))
+                               (command-line))))
+(define compile? (not clean?))
 
-(compile-c)
-
-(install (memq #t (map (lambda (x) (equal? "install" x))
-                       (command-line))))
-
-(clean (memq #t (map (lambda (x) (equal? "clean" x))
-                     (command-line))))
+(let ((config (configure #:exe-name "dfcc" ;;#:lib-source-dir "src/lib" #:lib-name "libdfcc" #:lib-type 'both)
+                         #:link '("m")
+                         #:derive '(DYNAMIC_TABLE))))
+  (compile-c config compile?)
+  (install config install?)
+  (clean config clean?))

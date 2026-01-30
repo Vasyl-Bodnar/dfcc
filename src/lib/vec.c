@@ -37,7 +37,9 @@ uint32_t push_elem_vec(Vector **v, const void *value) {
     return 1;
 }
 
-void *peek_elem_vec(Vector *v) { return (void *)(v->v + (v->length - 1)); }
+void *peek_elem_vec(Vector *v) {
+    return (void *)(v->v + v->value_size * (v->length - 1));
+}
 
 void pop_elem_vec(Vector *v) { v->length -= 1; }
 
@@ -67,7 +69,7 @@ String *create_str(size_t len) {
 }
 
 String *from_cstr(char *cs) {
-    size_t len = strlen(cs);
+    size_t len = strlen(cs) + 1; // Include null
     String *s = create_str(len);
     if (!push_slice_str(&s, cs, len)) {
         return 0;
