@@ -16,8 +16,12 @@ int main(int argc, char *argv[]) {
 
     // TODO: Consider also supporting mmap if available
     FILE *file = fopen(argv[1], "r");
-    struct stat st_buf;
+    if (!file) {
+        puts("Such a file could not be found");
+        return 1;
+    }
 
+    struct stat st_buf;
     fstat(fileno(file), &st_buf);
 
     char *buf = malloc(st_buf.st_size + 1);

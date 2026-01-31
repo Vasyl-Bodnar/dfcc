@@ -1339,19 +1339,19 @@ void print_lexes(const Lexes *lexes) {
                    lex.span.len);
             break;
         case LEX_ConstantUnsignedLongLong:
-            printf(":UnsidgnedLongLongNumber %zu: [%p, %zu]\n", lex.constant,
+            printf(":UnsignedLongLongNumber %zu: [%p, %zu]\n", lex.constant,
                    lex.span.start, lex.span.len);
             break;
         case LEX_ConstantUnsignedLong:
-            printf(":UnsidgnedLongNumber %zu: [%p, %zu]\n", lex.constant,
+            printf(":UnsignedLongNumber %zu: [%p, %zu]\n", lex.constant,
                    lex.span.start, lex.span.len);
             break;
         case LEX_ConstantUnsignedBitPrecise:
-            printf(":UnsidgnedBitPreciseNumber %zu: [%p, %zu]\n", lex.constant,
+            printf(":UnsignedBitPreciseNumber %zu: [%p, %zu]\n", lex.constant,
                    lex.span.start, lex.span.len);
             break;
         case LEX_ConstantUnsigned:
-            printf(":UnsidgnedNumber %zu: [%p, %zu]\n", lex.constant,
+            printf(":UnsignedNumber %zu: [%p, %zu]\n", lex.constant,
                    lex.span.start, lex.span.len);
             break;
         case LEX_ConstantLongLong:

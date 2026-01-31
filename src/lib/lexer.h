@@ -92,8 +92,7 @@ enum lex_type {
 // TODO: Expand for better errors
 enum invalid_type {
     Ok = 0,
-    ExpectedStringErrorMacro, // #error has a bad string
-    ExpectedStringWarnMacro,  // #warning has a bad string
+    // Lex
     UnfinishedChar,
     IllegalFloat,
     IllegalFloatHexSuffix,
@@ -101,6 +100,9 @@ enum invalid_type {
     IllegalChar,
     IllegalEscapeChar,
     IllegalString,
+    // Preprocessor
+    ExpectedStringErrorMacro, // #error has a bad string
+    ExpectedStringWarnMacro,  // #warning has a bad string
     ExpectedValidIncludeFile,
     ExpectedIncludeHeader,
     ExpectedIdMacroDefine,
@@ -112,7 +114,8 @@ enum invalid_type {
     ExpectedIfElse,
     ExpectedIfElseDef,
     ExpectedIfElseNotDef,
-    FailedRealloc, // Dark times ahead
+    // Dark times ahead
+    FailedRealloc,
 };
 
 enum lex_keyword {

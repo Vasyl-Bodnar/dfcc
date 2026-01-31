@@ -253,15 +253,18 @@ uint32_t process_include(const char *include, size_t len,
     }
 
     FILE *file = fopen(path, "r");
-    struct stat st_buf;
+    if (!file) {
+        return 0;
+    }
 
+    struct stat st_buf;
     fstat(fileno(file), &st_buf);
 
     char *buf = malloc(st_buf.st_size + 1);
     size_t bytes = fread(buf, 1, st_buf.st_size, file);
     fclose(file);
 
-    // TODO: Better messages (and system)
+    // TODO: Better messages (and system for doing this)
     if (bytes == 0) {
         printf("Invalid include file: %s\n", path);
         free(buf);
@@ -292,7 +295,29 @@ Lex include_file(const char *input, size_t len, size_t *idx,
                  Ids **id_table) {
     Lex lex = lex_next(input, len, idx, id_table);
     if (lex.type == LEX_Left) {
-        // TODO: Parse out a filename, Add to include stack
+        Span str = {.start = lex.span.start + 1, .len = 0};
+        while (str.start[str.len] != '>') {
+            if (str.start[str.len] == '\n') {
+                return (Lex){.type = LEX_Invalid,
+                             .span = str,
+                             .invalid = ExpectedValidIncludeFile};
+            }
+            str.len += 1;
+            *idx += 1;
+        }
+        *idx += 1;
+
+        if (!str.len) {
+            return (Lex){.type = LEX_Invalid,
+                         .span = str,
+                         .invalid = ExpectedValidIncludeFile};
+        }
+
+        if (!process_include(str.start, str.len, incl_stack, includes)) {
+            return (Lex){.type = LEX_Invalid,
+                         .span = str,
+                         .invalid = ExpectedValidIncludeFile};
+        }
     } else if (lex.type == LEX_String) {
         Span str = ((Span *)(*id_table)->v)[lex.id];
         if (!process_include(str.start + 1, str.len - 2, incl_stack,
