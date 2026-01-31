@@ -10,12 +10,23 @@ typedef struct MacroDefine {
     Span span; // what to replace with
 } MacroDefine;
 
-typedef struct IncludeFile {
-    String *path;
+enum include_type {
+    IncludeMacro,
+    IncludeFile,
+};
+
+// Note that `IncludeMacro` does not own anything
+// while `IncludeFile` owns the path and input
+typedef struct IncludeResource {
+    enum include_type incl_type;
+    union {
+        String *path;
+        size_t macro_id;
+    };
     char *input;
     size_t len;
     size_t idx;
-} IncludeFile;
+} IncludeResource;
 
 typedef Vector Includes;
 
@@ -31,7 +42,9 @@ IncludeStack *create_include_stack(size_t capacity);
 Includes *create_includes(size_t capacity);
 Macros *create_macros(size_t capacity);
 
-IncludeFile *get_top_include(IncludeStack *incl_stack, Includes *includes);
+size_t insert_include(Includes **includes, IncludeResource *resource);
+
+IncludeResource *get_top_include(IncludeStack *incl_stack, Includes *includes);
 
 void print_include_stack(IncludeStack *include_stack);
 void print_includes(Includes *includes);

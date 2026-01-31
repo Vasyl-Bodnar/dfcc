@@ -50,9 +50,11 @@ int main(int argc, char *argv[]) {
     Macros *macros = create_macros(8);
 
     String *path = from_cstr(argv[1]);
-    push_elem_vec(
-        &includes,
-        &(IncludeFile){.path = path, .input = buf, .len = bytes, .idx = 0});
+    push_elem_vec(&includes, &(IncludeResource){.incl_type = IncludeFile,
+                                                .path = path,
+                                                .input = buf,
+                                                .len = bytes,
+                                                .idx = 0});
 
     size_t incl_id = 0;
     push_elem_vec(&incl_stack, &incl_id);
@@ -65,8 +67,9 @@ int main(int argc, char *argv[]) {
                                         &macros);
             push_elem_vec(&lexes, &lex);
         } while (lex.type != LEX_Eof);
-        IncludeFile *file = get_top_include(incl_stack, includes);
+        IncludeResource *file = get_top_include(incl_stack, includes);
         file->idx = 0;
+        pop_elem_vec(lexes); // Extra EOF
         pop_elem_vec(incl_stack);
     }
 

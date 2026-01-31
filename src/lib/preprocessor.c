@@ -231,7 +231,7 @@ Lex if_not_defined(const char *input, size_t len, size_t *idx, size_t *if_depth,
 // NOTE: This makes a hefty assumption that our path is always PATH_MAX at most
 uint32_t process_include(const char *include, size_t len,
                          IncludeStack **incl_stack, Includes **includes) {
-    IncludeFile *top = get_top_include(*incl_stack, *includes);
+    IncludeResource *top = get_top_include(*incl_stack, *includes);
     char path[PATH_MAX];
 
     realpath(top->path->s, path);
@@ -244,9 +244,10 @@ uint32_t process_include(const char *include, size_t len,
     path[path_len + 1 + len] = '\0';
 
     for (size_t i = 0; i < (*includes)->length; i++) {
-        IncludeFile *incl = (IncludeFile *)(*includes)->v + i;
-        if (!incl->idx && incl->path->length == path_len + 2 + len &&
-            !memcmp(incl->path->s, path, incl->path->length)) {
+        IncludeResource *resc = (IncludeResource *)(*includes)->v + i;
+        if (resc->incl_type == IncludeFile && !resc->idx &&
+            resc->path->length == path_len + 2 + len &&
+            !memcmp(resc->path->s, path, resc->path->length)) {
             push_elem_vec(incl_stack, &i);
             return 1;
         }
@@ -281,9 +282,11 @@ uint32_t process_include(const char *include, size_t len,
 
     String *file_path = from_cstr(path);
 
-    push_elem_vec(includes,
-                  &(IncludeFile){
-                      .path = file_path, .idx = 0, .input = buf, .len = bytes});
+    push_elem_vec(includes, &(IncludeResource){.incl_type = IncludeFile,
+                                               .path = file_path,
+                                               .idx = 0,
+                                               .input = buf,
+                                               .len = bytes});
 
     size_t new_top_id = (*includes)->length - 1;
     push_elem_vec(incl_stack, &new_top_id);
@@ -339,17 +342,32 @@ Lex include_file(const char *input, size_t len, size_t *idx,
 Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
                           Ids **id_table, Includes **includes,
                           Macros **macro_table) {
-    IncludeFile *file = get_top_include(*incl_stack, *includes);
-    char *input = file->input;
-    size_t len = file->len;
-    size_t *idx = &file->idx;
+    IncludeResource *resc = get_top_include(*incl_stack, *includes);
+    char *input = resc->input;
+    size_t len = resc->len;
+    size_t *idx = &resc->idx;
 
     Lex lex = lex_next(input, len, idx, id_table);
 
     if (lex.type == LEX_Identifier) {
+        // NOTE: Might have an id invalidation issue,
+        // look into it if and when it breaks
         MacroDefine *macro = get_elem_dht(*macro_table, &lex.id);
+        // Handle Macro call case (ID(x,y...))
         if (macro) {
-            // TODO: handle macro define expansion
+            IncludeResource resc = {
+                .incl_type = IncludeMacro,
+                .macro_id = lex.id,
+                .idx = 0,
+                .input = macro->span.start,
+                .len = macro->span.len,
+            };
+
+            size_t id = insert_include(includes, &resc);
+
+            push_elem_vec(incl_stack, &id);
+
+            lex = (Lex){0};
         }
     } else if (lex.type == LEX_MacroToken) {
         switch (lex.macro) {
@@ -360,7 +378,7 @@ Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
             lex = include_file(input, len, idx, incl_stack, includes, id_table);
             break;
         case Undefine: {
-            // TODO: Find a better way
+            // TODO: Find a neater way
             MacroDefine *macro = get_elem_dht(*macro_table, &lex.id);
             if (macro) {
                 free(macro->args); // Vector
@@ -499,22 +517,52 @@ void free_macros(Macros *macro_table) {
 }
 
 Includes *create_includes(size_t capacity) {
-    return create_vec(capacity, sizeof(IncludeFile));
+    return create_vec(capacity, sizeof(IncludeResource));
+}
+
+size_t insert_include(Includes **includes, IncludeResource *resource) {
+    if (resource->incl_type == IncludeFile) {
+        for (size_t i = 0; i < (*includes)->length; i++) {
+            IncludeResource *resc = (IncludeResource *)(*includes)->v + i;
+            if (resc->incl_type == IncludeFile && !resc->idx &&
+                resc->path->length == resource->path->length &&
+                !memcmp(resc->path->s, resource->path->s, resc->path->length)) {
+                return i;
+            }
+        }
+    } else if (resource->incl_type == IncludeMacro) {
+        for (size_t i = 0; i < (*includes)->length; i++) {
+            IncludeResource *resc = (IncludeResource *)(*includes)->v + i;
+            if (resc->incl_type == IncludeMacro && !resc->idx &&
+                resc->macro_id == resource->macro_id) {
+                return i;
+            }
+        }
+    }
+    push_elem_vec(includes, resource);
+    return (*includes)->length - 1;
 }
 
 void print_includes(Includes *includes) {
     for (size_t i = 0; i < includes->length; i++) {
-        IncludeFile *file = ((IncludeFile *)includes->v) + i;
-        printf("(path: %s ptr: %p len: %zu idx: %zu)\n", file->path->s,
-               file->input, file->len, file->idx);
+        IncludeResource *resc = ((IncludeResource *)includes->v) + i;
+        if (resc->incl_type == IncludeFile) {
+            printf("#path: %s ptr: %p len: %zu idx: %zu#\n", resc->path->s,
+                   resc->input, resc->len, resc->idx);
+        } else if (resc->incl_type == IncludeMacro) {
+            printf("#mid: %zu ptr: %p len: %zu idx: %zu#\n", resc->macro_id,
+                   resc->input, resc->len, resc->idx);
+        }
     }
 }
 
 void free_includes(Includes *includes) {
     for (size_t i = 0; i < includes->length; i++) {
-        IncludeFile *file = ((IncludeFile *)includes->v) + i;
-        free(file->input);
-        delete_str(file->path);
+        IncludeResource *resc = ((IncludeResource *)includes->v) + i;
+        if (resc->incl_type == IncludeFile) {
+            free(resc->input);
+            delete_str(resc->path);
+        }
     }
     free(includes);
 }
@@ -523,9 +571,9 @@ IncludeStack *create_include_stack(size_t capacity) {
     return create_vec(capacity, sizeof(size_t));
 }
 
-IncludeFile *get_top_include(IncludeStack *incl_stack, Includes *includes) {
+IncludeResource *get_top_include(IncludeStack *incl_stack, Includes *includes) {
     size_t *top_id = peek_elem_vec(incl_stack);
-    return ((IncludeFile *)(includes->v)) + *top_id;
+    return ((IncludeResource *)(includes->v)) + *top_id;
 }
 
 void print_include_stack(IncludeStack *incl_stack) {
