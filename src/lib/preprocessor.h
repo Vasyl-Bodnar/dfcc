@@ -45,6 +45,8 @@ Macros *create_macros(size_t capacity);
 size_t insert_include(Includes **includes, IncludeResource *resource);
 
 IncludeResource *get_top_include(IncludeStack *incl_stack, Includes *includes);
+void pop_top_include(IncludeStack *incl_stack, Includes *includes,
+                     Macros *macros);
 
 void print_include_stack(IncludeStack *include_stack);
 void print_includes(Includes *includes);

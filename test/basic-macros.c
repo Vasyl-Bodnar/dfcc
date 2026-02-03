@@ -1,11 +1,11 @@
 #include "basic-macros.h"
-// #define id(x) x
+#define id(z) z
 #include "basic-macros.h"
-#define x 100 + 50
+#define x id(100)
 #include "basic-macros.h"
-// #define y (id(x) + 10)
+#define y (id(x) + 10)
 
 #ifndef z
 int friend() { return 0; }
-int main(void) { return x + 20; }
+int main(void) { return x + id(y); }
 #endif
