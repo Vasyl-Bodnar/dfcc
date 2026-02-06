@@ -8,6 +8,7 @@
 typedef struct MacroDefine {
     Ids *args;
     Span span; // what to replace with
+    struct MacroDefine *next;
 } MacroDefine;
 
 enum include_type {
@@ -28,11 +29,11 @@ typedef struct IncludeResource {
     size_t idx;
 } IncludeResource;
 
-typedef Vector Includes;
+typedef Vector Includes; // IncludeResources
 
-typedef Vector IncludeStack; // ids to Includes
+typedef Vector IncludeStack; // Ids to Includes
 
-typedef HashTable Macros;
+typedef HashTable Macros; // MacroDefines
 
 Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
                           Ids **id_table, Includes **includes,
@@ -46,7 +47,7 @@ size_t insert_include(Includes **includes, IncludeResource *resource);
 
 IncludeResource *get_top_include(IncludeStack *incl_stack, Includes *includes);
 void pop_top_include(IncludeStack *incl_stack, Includes *includes,
-                     Macros *macros);
+                     Macros **macros);
 
 void print_include_stack(IncludeStack *include_stack);
 void print_includes(Includes *includes);

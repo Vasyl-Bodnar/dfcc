@@ -44,7 +44,7 @@ Vector *process_define_args(const char *input, size_t len, size_t *idx,
 // TODO: Handle variadic ...
 Lex process_define(const char *input, size_t len, size_t *idx, Ids **id_table,
                    Macros **macro_table) {
-    MacroDefine macro = (MacroDefine){0};
+    MacroDefine macro = (MacroDefine){.args = 0, .span = {0}, .next = 0};
     Lex result = (Lex){0};
 
     Lex id = lex_next(input, len, idx, id_table);
@@ -373,10 +373,18 @@ Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
                             }
                         }
 
-                        // TODO: This can overwrite perfectly good macros
-                        // use a table stack or possibly keep previous macros
-                        MacroDefine lmacro = {.args = 0, .span = span};
-                        put_elem_dht(macro_table, &aid, &lmacro);
+                        MacroDefine *lmacro = get_elem_dht(*macro_table, &aid);
+                        if (lmacro) {
+                            MacroDefine *mac = malloc(sizeof(MacroDefine));
+                            mac->args = lmacro->args;
+                            mac->span = lmacro->span;
+                            mac->next = lmacro->next;
+                            lmacro = mac;
+                        }
+
+                        MacroDefine mac = {
+                            .args = 0, .span = span, .next = lmacro};
+                        put_elem_dht(macro_table, &aid, &mac);
 
                         if (span.start[span.len] == ')' &&
                             i + 1 < macro->args->length) {
@@ -412,6 +420,9 @@ Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
 
             push_elem_vec(incl_stack, &rid);
 
+            // printf("Push %zu!\n", rid);
+            // print_macros(*macro_table);
+
             lex = (Lex){0};
         }
     } else if (lex.type == LEX_MacroToken) {
@@ -427,6 +438,12 @@ Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
             MacroDefine *macro = get_elem_dht(*macro_table, &lex.id);
             if (macro) {
                 free(macro->args); // Vector
+                MacroDefine *dead = macro->next;
+                while (dead) {
+                    MacroDefine *tmp = dead;
+                    dead = dead->next;
+                    free(tmp);
+                }
                 delete_elem_dht(*macro_table, &lex.id);
             } else {
                 return (Lex){.type = LEX_Invalid,
@@ -530,7 +547,7 @@ Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
     }
 
     if (lex.type == LEX_Eof && (*incl_stack)->length > 1) {
-        pop_top_include(*incl_stack, *includes, *macro_table);
+        pop_top_include(*incl_stack, *includes, macro_table);
         lex = (Lex){0};
     }
 
@@ -550,10 +567,17 @@ void print_macros(Macros *macro_table) {
     Entry entry;
     size_t idx = 0;
     while ((entry = next_elem_dht(macro_table, &idx)).key) {
-        printf("(id: %zu args: %p span: [%p, %zu])\n", *(size_t *)entry.key,
-               ((MacroDefine *)entry.value)->args,
-               ((MacroDefine *)entry.value)->span.start,
-               ((MacroDefine *)entry.value)->span.len);
+        MacroDefine *macro = entry.value;
+        printf("(id: %zu args: %p next: %p span: [%p, %zu]",
+               *(size_t *)entry.key, macro->args, macro->next,
+               macro->span.start, macro->span.len);
+        MacroDefine *tmp = macro->next;
+        while (tmp) {
+            printf("\n  (next: %p span: [%p, %zu])", tmp->next, tmp->span.start,
+                   tmp->span.len);
+            tmp = tmp->next;
+        }
+        printf(")\n");
     }
 }
 
@@ -562,6 +586,12 @@ void free_macros(Macros *macro_table) {
     size_t idx = 0;
     while ((entry = next_elem_dht(macro_table, &idx)).key) {
         free(((MacroDefine *)entry.value)->args);
+        MacroDefine *dead = ((MacroDefine *)entry.value)->next;
+        while (dead) {
+            MacroDefine *tmp = dead;
+            dead = dead->next;
+            free(tmp);
+        }
     }
     free(macro_table);
 }
@@ -631,20 +661,33 @@ IncludeResource *get_top_include(IncludeStack *incl_stack, Includes *includes) {
 }
 
 void pop_top_include(IncludeStack *incl_stack, Includes *includes,
-                     Macros *macros) {
+                     Macros **macros) {
     size_t top_id = *(size_t *)peek_elem_vec(incl_stack);
     pop_elem_vec(incl_stack);
 
     IncludeResource *resc = at_elem_vec(includes, top_id);
     resc->idx = 0;
 
+    // printf("Pop %zu!\n", top_id);
+    // print_macros(*macros);
+
     if (resc->incl_type == IncludeMacro) {
-        MacroDefine *macro = get_elem_dht(macros, &resc->macro_id);
+        MacroDefine *macro = get_elem_dht(*macros, &resc->macro_id);
         if (macro && macro->args) {
             for (size_t i = 0; i < macro->args->length; i++) {
-                // NOTE: We can safely delete,
-                // these submacros cannot be function macros (ID(x,y))
-                delete_elem_dht(macros, at_elem_vec(macro->args, i));
+                MacroDefine *arg =
+                    get_elem_dht(*macros, at_elem_vec(macro->args, i));
+                if (arg) {
+                    if (arg->next) {
+                        put_elem_dht(macros, at_elem_vec(macro->args, i),
+                                     arg->next);
+                        // TODO: Figure out how to free the node properly
+                    } else {
+                        // NOTE: We can safely delete,
+                        // these submacros cannot be function macros (ID(x,y))
+                        delete_elem_dht(*macros, at_elem_vec(macro->args, i));
+                    }
+                }
             }
         }
     }
