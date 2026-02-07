@@ -104,7 +104,7 @@ int space(char c) { return c == ' ' || c == '\n' || c == '\t' || c == '\r'; }
 // Check if this id already exists, else push it on
 size_t search_id_table(const char *input, Span span, Ids **id_table) {
     for (size_t i = 0; i < (*id_table)->length; i++) {
-        Span id = *(Span *)at_elem_vec(*id_table, i);
+        Span id = ((Span *)(*id_table)->v)[i];
         if (span.len == id.len && !memcmp(id.start, span.start, span.len)) {
             return i;
         }
@@ -1298,14 +1298,14 @@ Lexes *create_lexes(size_t capacity) {
 
 void print_ids(const Ids *ids) {
     for (uint64_t i = 0; i < ids->length; i++) {
-        Span span = *(Span *)at_elem_vec((Ids *)ids, i);
+        Span span = ((Span *)ids->v)[i];
         printf("<Id %zu %.*s>\n", i, (int)span.len, span.start);
     }
 }
 
 void print_lexes(const Lexes *lexes) {
     for (uint64_t i = 0; i < lexes->length; i++) {
-        Lex lex = *(Lex *)at_elem_vec((Lexes *)lexes, i);
+        Lex lex = ((Lex *)lexes->v)[i];
         switch (lex.type) {
         case LEX_Invalid:
             printf(":Lex Error %d: [%p, %zu]\n", lex.invalid, lex.span.start,

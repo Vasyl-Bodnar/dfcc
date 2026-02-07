@@ -44,7 +44,10 @@ void *peek_elem_vec(Vector *v) {
 void pop_elem_vec(Vector *v) { v->length -= 1; }
 
 void *at_elem_vec(Vector *v, size_t idx) {
-    return (void *)(v->v + v->value_size * idx);
+    if (idx > v->length) {
+        return 0;
+    }
+    return (void *)(v->v + idx);
 }
 
 void get_elem_vec(Vector *v, size_t idx, void *value) {

@@ -20,16 +20,16 @@ Vector *create_vec(size_t len, size_t value_size);
 // Push element, grows with *3/2, ups to 3 beforehand if less than 4
 uint32_t push_elem_vec(Vector **v, const void *value);
 
-// Unchecked peek, returns the address, must contain more than 0 elements
+// Unchecked peek, must contain more than 0 elements
 void *peek_elem_vec(Vector *v);
 
 // Unchecked pop, must contain more than 0 elements
 void pop_elem_vec(Vector *v);
 
-// Unchecked at, returns the address, must contain the elem at idx
+// Checked at, returns 0 if not found
 void *at_elem_vec(Vector *v, size_t idx);
 
-// Unchecked memcpy, must contain the elem at idx
+// Unchecked memcpy
 void get_elem_vec(Vector *v, size_t idx, void *value);
 
 void delete_vec(Vector *v);

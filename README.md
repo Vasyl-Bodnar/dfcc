@@ -1,7 +1,7 @@
 # dfcc
 C23 C compiler that aims to be fast to compile and easy to develop backends for.
 
-Heavy work in progress. Only lexer and parts of the preprocessor are more or less done at the moment.
+Heavy work in progress. Only lexer is more or less done at the moment.
 
 # Build
 In root directory run:

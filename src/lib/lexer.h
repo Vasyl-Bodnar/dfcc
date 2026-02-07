@@ -109,8 +109,6 @@ enum invalid_type {
     ExpectedIdMacroUndefine,
     ExpectedGoodArgsMacroDefine,
     ExpectedNLAfterSlashMacroDefine,
-    ExpectedLessArgsMacro,
-    ExpectedMoreArgsMacro,
     ExpectedIdIfDef,
     ExpectedIfEndIf,
     ExpectedIfElse,
