@@ -46,11 +46,8 @@ Macros *create_macros(size_t capacity);
 size_t insert_include(Includes **includes, IncludeResource *resource);
 
 IncludeResource *get_top_include(IncludeStack *incl_stack, Includes *includes);
-<<<<<<< HEAD
 void pop_top_include(IncludeStack *incl_stack, Includes *includes,
                      Macros **macros);
-=======
->>>>>>> parent of 2a8cb0f (Made function macros work, some refactoring)
 
 void print_include_stack(IncludeStack *include_stack);
 void print_includes(Includes *includes);

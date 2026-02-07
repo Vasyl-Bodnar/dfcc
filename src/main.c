@@ -61,17 +61,11 @@ int main(int argc, char *argv[]) {
 
     Lex lex;
     size_t depth = 0;
-    while (incl_stack->length) {
-        do {
-            lex = preprocessed_lex_next(&incl_stack, &depth, &ids, &includes,
-                                        &macros);
-            push_elem_vec(&lexes, &lex);
-        } while (lex.type != LEX_Eof);
-        IncludeResource *file = get_top_include(incl_stack, includes);
-        file->idx = 0;
-        pop_elem_vec(lexes); // Extra EOF
-        pop_elem_vec(incl_stack);
-    }
+    do {
+        lex = preprocessed_lex_next(&incl_stack, &depth, &ids, &includes,
+                                    &macros);
+        push_elem_vec(&lexes, &lex);
+    } while (lex.type != LEX_Eof);
 
     print_lexes(lexes);
     print_ids(ids);
