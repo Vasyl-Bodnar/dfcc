@@ -8,7 +8,6 @@
 typedef struct MacroDefine {
     Ids *args;
     Span span; // what to replace with
-    struct MacroDefine *next;
 } MacroDefine;
 
 enum include_type {
@@ -47,7 +46,7 @@ size_t insert_include(Includes **includes, IncludeResource *resource);
 
 IncludeResource *get_top_include(IncludeStack *incl_stack, Includes *includes);
 void pop_top_include(IncludeStack *incl_stack, Includes *includes,
-                     Macros **macros);
+                     Macros *macros);
 
 void print_include_stack(IncludeStack *include_stack);
 void print_includes(Includes *includes);
