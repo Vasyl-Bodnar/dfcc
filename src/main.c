@@ -50,11 +50,13 @@ int main(int argc, char *argv[]) {
     Macros *macros = create_macros(8);
 
     String *path = from_cstr(argv[1]);
-    push_elem_vec(&includes, &(IncludeResource){.incl_type = IncludeFile,
-                                                .path = path,
-                                                .input = buf,
-                                                .len = bytes,
-                                                .idx = 0});
+    push_elem_vec(
+        &includes,
+        &(IncludeResource){
+            .incl_type = IncludeFile,
+            .path = path,
+            .input = {.start = buf, .len = bytes, .idx = 0, .row = 1, .col = 0},
+        });
 
     size_t incl_id = 0;
     push_elem_vec(&incl_stack, &incl_id);

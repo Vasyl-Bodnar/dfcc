@@ -1,7 +1,4 @@
-#define id(z) z
-#define x id(100)
-#define y (id(x) + 10)
+#include "basic-macros.h"
+#define x 100
 
-#ifndef z
-int main(void) { return x + id(y); }
-#endif
+int main(void) { return x + x + x; }

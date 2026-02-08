@@ -5,7 +5,7 @@
  * A useless program
  */
 int main(void) {
-    int a = 0b11ull, b = 0x11lu, c = 0777ll, x = 556u;
+    int a = 0b101ull, b = 0x101lu, c = 0777ll, x = 556u;
     char z = 'z';
     z = L'z';
     z = U'z';

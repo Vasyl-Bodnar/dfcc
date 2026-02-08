@@ -23,9 +23,7 @@ typedef struct IncludeResource {
         String *path;
         size_t macro_id;
     };
-    char *input;
-    size_t len;
-    size_t idx;
+    Stream input;
 } IncludeResource;
 
 typedef Vector Includes; // IncludeResources

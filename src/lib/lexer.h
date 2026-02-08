@@ -5,6 +5,7 @@
 #define LEXER_H_
 
 #include "vec.h"
+#include <stddef.h>
 #include <stdint.h>
 
 enum lex_type {
@@ -94,6 +95,7 @@ enum invalid_type {
     Ok = 0,
     // Lex
     UnfinishedChar,
+    IllegalToken,
     IllegalFloat,
     IllegalFloatHexSuffix,
     IllegalFloatHexExponent,
@@ -200,7 +202,19 @@ enum macro_type {
 typedef struct Span {
     char *start;
     size_t len;
+    size_t row;
+    size_t col;
 } Span;
+
+// Span, but with an idx
+// It is legal to change row and col as well
+typedef struct Stream {
+    char *start;
+    size_t len;
+    size_t row;
+    size_t col;
+    size_t idx;
+} Stream;
 
 typedef struct Lex {
     enum lex_type type;
@@ -219,7 +233,10 @@ typedef Vector Ids;
 typedef Vector Lexes;
 
 // Last character must be a newline
-Lex lex_next(const char *input, size_t len, size_t *idx, Ids **id_table);
+Lex lex_next(Stream *stream, Ids **id_table);
+
+Span from_stream(const Stream *stream, size_t len);
+Span from_stream_off(const Stream *stream, ptrdiff_t off, size_t len);
 
 Ids *create_ids(size_t capacity);
 
