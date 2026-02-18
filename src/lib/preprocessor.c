@@ -24,6 +24,14 @@
   };
 */
 
+Lex if_defined(Stream *stream, size_t *if_depth, Ids **id_table,
+               Macros **macro_table);
+Lex if_not_defined(Stream *stream, size_t *if_depth, Ids **id_table,
+                   Macros **macro_table);
+Lex include_macro(MacroDefine *macro, size_t mid, Includes **includes,
+                  IncludeStack **incl_stack, Macros **macro_table,
+                  Ids **id_table);
+
 Vector *process_define_args(Stream *stream, Ids **id_table) {
     Vector *args = create_vec(0, sizeof(size_t));
     Lex cur = lex_next(stream, id_table);
@@ -41,8 +49,16 @@ Vector *process_define_args(Stream *stream, Ids **id_table) {
 }
 
 // TODO: Handle variadic ...
-Lex process_define(Stream *stream, Ids **id_table, Macros **macro_table) {
-    MacroDefine macro = (MacroDefine){.args = 0, .span = {0}};
+Lex process_define(IncludeResource *resc, Ids **id_table, Includes **includes,
+                   IncludeStack **incl_stack, Macros **macro_table) {
+    if (resc->incl_type == IncludeMacro) {
+        printf("3 ");
+        return (Lex){
+            .type = LEX_Invalid, .span = {0}, .invalid = ExpectedFileNotMacro};
+    }
+
+    Stream *stream = &resc->input;
+    MacroDefine macro = (MacroDefine){.args = 0, .lexes = 0};
     Lex result = (Lex){0};
 
     Lex id = lex_next(stream, id_table);
@@ -60,8 +76,10 @@ Lex process_define(Stream *stream, Ids **id_table, Macros **macro_table) {
             }
         }
 
+        Stream saved = *stream;
         Span span = from_stream(stream, 1);
         while (span.start[span.len] != '\n') {
+            stream->col += 1;
             span.len += 1;
             if (span.start[span.len] == '\\') {
                 if (span.start[span.len + 1] == '\n') {
@@ -77,14 +95,29 @@ Lex process_define(Stream *stream, Ids **id_table, Macros **macro_table) {
                 result = (Lex){.type = LEX_Eof};
             }
         }
-        macro.span = span;
+        stream->idx += span.len;
+        saved.len = stream->idx;
+
+        macro.lexes = create_lexes(1);
+        Lex tok = {0};
+        while (tok.type != LEX_Eof) {
+            tok = lex_next(&saved, id_table);
+            if (tok.type == LEX_Identifier) {
+                MacroDefine *macro = get_elem_dht(*macro_table, &tok.id);
+                if (macro) {
+                    tok = include_macro(macro, tok.id, includes, incl_stack,
+                                        macro_table, id_table);
+                }
+            }
+            if (tok.type || tok.invalid) {
+                push_elem_vec(&macro.lexes, &tok);
+            }
+        }
 
         if (!put_elem_dht(macro_table, &mid, &macro)) {
             return (Lex){
                 .type = LEX_Invalid, .span = id.span, .invalid = FailedRealloc};
         }
-
-        stream->idx += span.len;
 
         return result;
     }
@@ -92,11 +125,6 @@ Lex process_define(Stream *stream, Ids **id_table, Macros **macro_table) {
     return (Lex){
         .type = LEX_Invalid, .span = id.span, .invalid = ExpectedIdMacroDefine};
 }
-
-Lex if_defined(Stream *stream, size_t *if_depth, Ids **id_table,
-               Macros **macro_table);
-Lex if_not_defined(Stream *stream, size_t *if_depth, Ids **id_table,
-                   Macros **macro_table);
 
 Lex conditional_exclude_tail(Stream *stream, size_t *if_depth, Ids **id_table) {
     size_t cur_if_depth = *if_depth;
@@ -333,196 +361,241 @@ Lex include_file(Stream *stream, IncludeStack **incl_stack, Includes **includes,
     return (Lex){0};
 }
 
+Lex lex_next_resc(IncludeResource *resc, Ids **id_table) {
+    if (resc->incl_type == IncludeFile) {
+        return lex_next(&resc->input, id_table);
+    } else if (resc->incl_type == IncludeMacro) {
+        if (resc->idx >= resc->lexes->length) {
+            return (Lex){.type = LEX_Eof};
+        }
+        Lex lex = *(Lex *)at_elem_vec(resc->lexes, resc->idx);
+        resc->idx += 1;
+        return lex;
+    }
+    return (Lex){
+        .type = LEX_Invalid, .span = {0}, .invalid = ExpectedImpossible};
+}
+
+Lex lex_next_top_resc(IncludeStack *incl_stack, Includes *includes,
+                      Macros *macro_table, Ids **id_table) {
+    IncludeResource *resc = get_top_include(incl_stack, includes);
+    Lex lex = lex_next_resc(resc, id_table);
+    if (lex.type == LEX_Eof && incl_stack->length) {
+        pop_top_include(incl_stack, includes, macro_table);
+        return lex_next_top_resc(incl_stack, includes, macro_table, id_table);
+    } else {
+        return lex;
+    }
+}
+
+Lex include_macro(MacroDefine *macro, size_t mid, Includes **includes,
+                  IncludeStack **incl_stack, Macros **macro_table,
+                  Ids **id_table) {
+    if (macro->args) {
+        Lex lex =
+            lex_next_top_resc(*incl_stack, *includes, *macro_table, id_table);
+        if (lex.type == LEX_LParen) {
+            for (size_t i = 0; i < macro->args->length; i++) {
+                size_t aid = *(size_t *)at_elem_vec(macro->args, i);
+                MacroDefine mac = {.args = 0, .lexes = create_lexes(2)};
+                lex = lex_next_top_resc(*incl_stack, *includes, *macro_table,
+                                        id_table);
+
+                while (1) {
+                    lex = lex_next_top_resc(*incl_stack, *includes,
+                                            *macro_table, id_table);
+                    if (lex.type == LEX_Identifier) {
+                        MacroDefine *macro =
+                            get_elem_dht(*macro_table, &lex.id);
+                        if (macro) {
+                            lex = include_macro(macro, lex.id, includes,
+                                                incl_stack, macro_table,
+                                                id_table);
+                        }
+                    }
+                    if (lex.type == LEX_Eof) {
+                        return (Lex){.type = LEX_Invalid,
+                                     .span = lex.span,
+                                     .invalid = ExpectedMoreArgsMacro};
+                    }
+                    if (lex.type == LEX_Comma || lex.type == LEX_RParen) {
+                        break;
+                    }
+                    if (lex.type || lex.invalid) {
+                        push_elem_vec(&mac.lexes, &lex);
+                    }
+                }
+
+                put_elem_dht(macro_table, &aid, &mac);
+
+                if (lex.type == LEX_RParen && i + 1 < macro->args->length) {
+                    return (Lex){.type = LEX_Invalid,
+                                 .span = lex.span,
+                                 .invalid = ExpectedLessArgsMacro};
+                }
+            }
+
+            if (lex.type != LEX_RParen) {
+                return (Lex){.type = LEX_Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedMoreArgsMacro};
+            }
+        } else {
+            return (Lex){.type = LEX_Invalid,
+                         .span = lex.span,
+                         .invalid = ExpectedMoreArgsMacro};
+        }
+    }
+
+    IncludeResource mresc = {
+        .incl_type = IncludeMacro,
+        .macro_id = mid,
+        .idx = 0,
+        .lexes = macro->lexes,
+    };
+
+    size_t rid = insert_include(includes, &mresc);
+
+    push_elem_vec(incl_stack, &rid);
+
+    // printf("Push %zu!\n", rid);
+    // print_macros(*macro_table);
+
+    return (Lex){0};
+}
+
 // TODO: Macros should be first characters of the line.
 //       Lexer does not handle this currently
 Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
                           Ids **id_table, Includes **includes,
                           Macros **macro_table) {
     IncludeResource *resc = get_top_include(*incl_stack, *includes);
-    Stream *stream = &resc->input;
-
-    Lex lex = lex_next(stream, id_table);
+    Lex lex = lex_next_resc(resc, id_table);
 
     if (lex.type == LEX_Identifier) {
-        // TODO: Current implementation uses text instead of tokens
-        // which makes it impossible to expand macros before using them.
-        // This causes infinite recursion in some cases and has to be
-        // reimplemented.
         MacroDefine *macro = get_elem_dht(*macro_table, &lex.id);
         if (macro) {
-            size_t mid = lex.id;
-            if (macro->args) {
-                lex = lex_next(stream, id_table);
-                if (lex.type == LEX_LParen) {
-                    for (size_t i = 0; i < macro->args->length; i++) {
-                        size_t aid = *(size_t *)at_elem_vec(macro->args, i);
-                        Span span = from_stream(stream, 0);
-
-                        while (span.start[span.len] != ',' &&
-                               span.start[span.len] != ')') {
-                            span.len += 1;
-                            stream->idx += 1;
-                            stream->col += 1;
-                            if (span.start[span.len] == '\0') {
-                                return (Lex){.type = LEX_Invalid,
-                                             .span = lex.span,
-                                             .invalid = ExpectedMoreArgsMacro};
-                            }
-                        }
-
-                        MacroDefine mac = {.args = 0, .span = span};
-                        put_elem_dht(macro_table, &aid, &mac);
-
-                        if (span.start[span.len] == ')' &&
-                            i + 1 < macro->args->length) {
-                            return (Lex){.type = LEX_Invalid,
-                                         .span = lex.span,
-                                         .invalid = ExpectedLessArgsMacro};
-                        }
-
-                        stream->idx += 1;
-                        stream->col += 1;
-                    }
-
-                    if (stream->start[stream->idx - 1] != ')') {
-                        return (Lex){.type = LEX_Invalid,
-                                     .span = lex.span,
-                                     .invalid = ExpectedMoreArgsMacro};
-                    }
+            lex = include_macro(macro, lex.id, includes, incl_stack,
+                                macro_table, id_table);
+        }
+    } else if (lex.type == LEX_MacroToken) {
+        if (resc->incl_type == IncludeMacro) {
+            printf("2 ");
+            lex = (Lex){.type = LEX_Invalid,
+                        .span = {0},
+                        .invalid = ExpectedFileNotMacro};
+        } else {
+            Stream *stream = &resc->input;
+            switch (lex.macro) {
+            case Define:
+                lex = process_define(resc, id_table, includes, incl_stack,
+                                     macro_table);
+                break;
+            case Include:
+                lex = include_file(stream, incl_stack, includes, id_table);
+                break;
+            case Undefine: {
+                // TODO: Find a neater way
+                MacroDefine *macro = get_elem_dht(*macro_table, &lex.id);
+                if (macro) {
+                    free(macro->args);  // Vector
+                    free(macro->lexes); // Vector
+                    delete_elem_dht(*macro_table, &lex.id);
                 } else {
                     return (Lex){.type = LEX_Invalid,
                                  .span = lex.span,
-                                 .invalid = ExpectedMoreArgsMacro};
+                                 .invalid = ExpectedIdMacroUndefine};
                 }
+                break;
             }
-
-            IncludeResource resc = {
-                .incl_type = IncludeMacro,
-                .macro_id = mid,
-                .input = {.start = macro->span.start,
-                          .len = macro->span.len,
-                          .idx = 0,
-                          .row = stream->row,
-                          .col = stream->col},
-            };
-
-            size_t rid = insert_include(includes, &resc);
-
-            push_elem_vec(incl_stack, &rid);
-
-            // printf("Push %zu!\n", rid);
-            // print_macros(*macro_table);
-
-            lex = (Lex){0};
-        }
-    } else if (lex.type == LEX_MacroToken) {
-        switch (lex.macro) {
-        case Define:
-            lex = process_define(stream, id_table, macro_table);
-            break;
-        case Include:
-            lex = include_file(stream, incl_stack, includes, id_table);
-            break;
-        case Undefine: {
-            // TODO: Find a neater way
-            MacroDefine *macro = get_elem_dht(*macro_table, &lex.id);
-            if (macro) {
-                free(macro->args); // Vector
-                delete_elem_dht(*macro_table, &lex.id);
-            } else {
-                return (Lex){.type = LEX_Invalid,
-                             .span = lex.span,
-                             .invalid = ExpectedIdMacroUndefine};
-            }
-            break;
-        }
-        case If:
-            // TODO: Handle
-            lex = (Lex){0};
-            break;
-        case IfDefined:
-            lex = if_defined(stream, if_depth, id_table, macro_table);
-            break;
-        case IfNotDefined:
-            lex = if_not_defined(stream, if_depth, id_table, macro_table);
-            break;
-        case Else:
-            if (!(*if_depth)) {
-                return (Lex){.type = LEX_Invalid,
-                             .span = lex.span,
-                             .invalid = ExpectedIfElse};
-            }
-            lex = conditional_exclude_tail(stream, if_depth, id_table);
-            break;
-        case ElseIf:
-            if (!(*if_depth)) {
-                return (Lex){.type = LEX_Invalid,
-                             .span = lex.span,
-                             .invalid = ExpectedIfElse};
-            }
-            // TODO: Handle
-            lex = (Lex){0};
-            break;
-        case ElseIfDefined:
-            if (!(*if_depth)) {
-                return (Lex){.type = LEX_Invalid,
-                             .span = lex.span,
-                             .invalid = ExpectedIfElseDef};
-            }
-            lex = if_defined(stream, if_depth, id_table, macro_table);
-            break;
-        case ElseIfNotDefined:
-            if (!(*if_depth)) {
-                return (Lex){.type = LEX_Invalid,
-                             .span = lex.span,
-                             .invalid = ExpectedIfElseNotDef};
-            }
-            lex = if_not_defined(stream, if_depth, id_table, macro_table);
-            break;
-        case EndIf:
-            if (!(*if_depth)) {
-                return (Lex){.type = LEX_Invalid,
-                             .span = lex.span,
-                             .invalid = ExpectedIfEndIf};
-            }
-            *if_depth -= 1;
-            lex = (Lex){0};
-            break;
-        case Line:
-            // TODO: Handle
-            lex = (Lex){0};
-            break;
-        case Embed:
-            // TODO: Handle
-            lex = (Lex){0};
-            break;
-        case Error:
-            lex = lex_next(stream, id_table);
-            if (lex.type == LEX_String) {
-                printf("#error %.*s on line %zu\n", (int)lex.span.len,
-                       lex.span.start, lex.span.row);
-                return (Lex){.type = LEX_Eof};
-            } else {
-                return (Lex){.type = LEX_Invalid,
-                             .span = lex.span,
-                             .invalid = ExpectedStringErrorMacro};
-            }
-        case Warning:
-            lex = lex_next(stream, id_table);
-            if (lex.type == LEX_String) {
-                printf("#warning %.*s on line %zu\n", (int)lex.span.len,
-                       lex.span.start, lex.span.row);
+            case If:
+                // TODO: Handle
                 lex = (Lex){0};
-            } else {
-                return (Lex){.type = LEX_Invalid,
-                             .span = lex.span,
-                             .invalid = ExpectedStringWarnMacro};
+                break;
+            case IfDefined:
+                lex = if_defined(stream, if_depth, id_table, macro_table);
+                break;
+            case IfNotDefined:
+                lex = if_not_defined(stream, if_depth, id_table, macro_table);
+                break;
+            case Else:
+                if (!(*if_depth)) {
+                    return (Lex){.type = LEX_Invalid,
+                                 .span = lex.span,
+                                 .invalid = ExpectedIfElse};
+                }
+                lex = conditional_exclude_tail(stream, if_depth, id_table);
+                break;
+            case ElseIf:
+                if (!(*if_depth)) {
+                    return (Lex){.type = LEX_Invalid,
+                                 .span = lex.span,
+                                 .invalid = ExpectedIfElse};
+                }
+                // TODO: Handle
+                lex = (Lex){0};
+                break;
+            case ElseIfDefined:
+                if (!(*if_depth)) {
+                    return (Lex){.type = LEX_Invalid,
+                                 .span = lex.span,
+                                 .invalid = ExpectedIfElseDef};
+                }
+                lex = if_defined(stream, if_depth, id_table, macro_table);
+                break;
+            case ElseIfNotDefined:
+                if (!(*if_depth)) {
+                    return (Lex){.type = LEX_Invalid,
+                                 .span = lex.span,
+                                 .invalid = ExpectedIfElseNotDef};
+                }
+                lex = if_not_defined(stream, if_depth, id_table, macro_table);
+                break;
+            case EndIf:
+                if (!(*if_depth)) {
+                    return (Lex){.type = LEX_Invalid,
+                                 .span = lex.span,
+                                 .invalid = ExpectedIfEndIf};
+                }
+                *if_depth -= 1;
+                lex = (Lex){0};
+                break;
+            case Line:
+                // TODO: Handle
+                lex = (Lex){0};
+                break;
+            case Embed:
+                // TODO: Handle
+                lex = (Lex){0};
+                break;
+            case Error:
+                lex = lex_next(stream, id_table);
+                if (lex.type == LEX_String) {
+                    printf("#error %.*s on line %zu\n", (int)lex.span.len,
+                           lex.span.start, lex.span.row);
+                    return (Lex){.type = LEX_Eof};
+                } else {
+                    return (Lex){.type = LEX_Invalid,
+                                 .span = lex.span,
+                                 .invalid = ExpectedStringErrorMacro};
+                }
+            case Warning:
+                lex = lex_next(stream, id_table);
+                if (lex.type == LEX_String) {
+                    printf("#warning %.*s on line %zu\n", (int)lex.span.len,
+                           lex.span.start, lex.span.row);
+                    lex = (Lex){0};
+                } else {
+                    return (Lex){.type = LEX_Invalid,
+                                 .span = lex.span,
+                                 .invalid = ExpectedStringWarnMacro};
+                }
+                break;
+            case Pragma:
+                // TODO: Handle
+                lex = (Lex){0};
+                break;
             }
-            break;
-        case Pragma:
-            // TODO: Handle
-            lex = (Lex){0};
-            break;
         }
     }
 
@@ -548,9 +621,12 @@ void print_macros(Macros *macro_table) {
     size_t idx = 0;
     while ((entry = next_elem_dht(macro_table, &idx)).key) {
         MacroDefine *macro = entry.value;
-        printf("(id: %zu args: %p ptr: %p len: %zu row: %zu col: %zu)\n",
-               *(size_t *)entry.key, macro->args, macro->span.start,
-               macro->span.len, macro->span.row, macro->span.col);
+        printf("(id: %zu args: %p", *(size_t *)entry.key, macro->args);
+        if (macro->lexes) {
+            printf(" len: %zu elems:\n", macro->lexes->length);
+            print_lexes(macro->lexes);
+        }
+        printf(")\n");
     }
 }
 
@@ -559,6 +635,7 @@ void free_macros(Macros *macro_table) {
     size_t idx = 0;
     while ((entry = next_elem_dht(macro_table, &idx)).key) {
         free(((MacroDefine *)entry.value)->args);
+        free(((MacroDefine *)entry.value)->lexes);
     }
     free(macro_table);
 }
@@ -602,9 +679,12 @@ void print_includes(Includes *includes) {
                    resc->path->s, resc->input.start, resc->input.len,
                    resc->input.row, resc->input.col, resc->input.idx);
         } else if (resc->incl_type == IncludeMacro) {
-            printf("#mid: %zu ptr: %p len: %zu row: %zu col: %zu idx: %zu#\n",
-                   resc->macro_id, resc->input.start, resc->input.len,
-                   resc->input.row, resc->input.col, resc->input.idx);
+            printf("#mid: %zu idx: %zu", resc->macro_id, resc->idx);
+            if (resc->lexes) {
+                printf(" len: %zu elems:\n", resc->lexes->length);
+                print_lexes(resc->lexes);
+            }
+            printf("#\n");
         }
     }
 }
@@ -635,20 +715,13 @@ void pop_top_include(IncludeStack *incl_stack, Includes *includes,
     pop_elem_vec(incl_stack);
 
     IncludeResource *resc = at_elem_vec(includes, top_id);
-    resc->input.idx = 0;
 
     // printf("Pop %zu!\n", top_id);
     // print_macros(*macros);
-
-    if (resc->incl_type == IncludeMacro) {
-        MacroDefine *macro = get_elem_dht(macros, &resc->macro_id);
-        if (macro && macro->args) {
-            for (size_t i = 0; i < macro->args->length; i++) {
-                // NOTE: We can safely delete,
-                // these submacros cannot be function macros (ID(x,y))
-                delete_elem_dht(macros, at_elem_vec(macro->args, i));
-            }
-        }
+    if (resc->incl_type == IncludeFile) {
+        resc->input.idx = 0;
+    } else if (resc->incl_type == IncludeMacro) {
+        resc->idx = 0;
     }
 }
 

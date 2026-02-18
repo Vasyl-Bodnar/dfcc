@@ -103,6 +103,8 @@ enum invalid_type {
     IllegalEscapeChar,
     IllegalString,
     // Preprocessor
+    ExpectedImpossible,       // This should not happen
+    ExpectedFileNotMacro,     // Can't #define macros inside #define macro
     ExpectedStringErrorMacro, // #error has a bad string
     ExpectedStringWarnMacro,  // #warning has a bad string
     ExpectedValidIncludeFile,

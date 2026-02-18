@@ -7,7 +7,7 @@
 
 typedef struct MacroDefine {
     Ids *args;
-    Span span; // what to replace with
+    Lexes *lexes; // what to replace with
 } MacroDefine;
 
 enum include_type {
@@ -23,14 +23,18 @@ typedef struct IncludeResource {
         String *path;
         size_t macro_id;
     };
-    Stream input;
+    union {
+        Stream input;
+        struct {
+            size_t idx;
+            Lexes *lexes;
+        };
+    };
 } IncludeResource;
 
-typedef Vector Includes; // IncludeResources
-
+typedef Vector Includes;     // IncludeResources
 typedef Vector IncludeStack; // Ids to Includes
-
-typedef HashTable Macros; // MacroDefines
+typedef HashTable Macros;    // MacroDefines
 
 Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
                           Ids **id_table, Includes **includes,
