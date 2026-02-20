@@ -14,19 +14,20 @@ enum include_type {
     IncludeFile,
 };
 
-// `path` and `input.start` must be freed for IncludeFile.
+// `path` and `stream.start` must be freed for IncludeFile.
 // `lexes` must be freed for IncludeMacro.
 typedef struct IncludeResource {
     enum include_type type;
     union {
-        String *path;
-        size_t mid;
-    };
-    union {
-        Stream stream;
         struct {
-            size_t idx;
+            String *path;
+            Stream stream;
+        };
+        struct {
             Lexes *lexes;
+            size_t mid;
+            size_t idx;
+            int macro_line;
         };
     };
 } IncludeResource;
@@ -44,9 +45,12 @@ typedef struct Preprocessor {
 
 Lex pp_lex_next(Preprocessor *pp, Ids **id_table);
 
-Lex include_file(Preprocessor *pp, String *path);
+Lex include_file(Preprocessor *pp, String *path, Ids **id_table);
+Lex include_macro(Preprocessor *pp, size_t mid, DefineMacro *macro,
+                  Ids **id_table);
 
 Preprocessor *create_pp();
+void print_pp(Preprocessor *pp);
 void delete_pp(Preprocessor *pp);
 
 #endif // PP_H

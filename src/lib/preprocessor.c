@@ -1,3 +1,5 @@
+#ifdef OLD_PP
+
 #include "preprocessor.h"
 #include "got.h"
 #include "lexer.h"
@@ -28,9 +30,9 @@ Lex if_defined(Stream *stream, size_t *if_depth, Ids **id_table,
                Macros **macro_table);
 Lex if_not_defined(Stream *stream, size_t *if_depth, Ids **id_table,
                    Macros **macro_table);
-Lex include_macro(MacroDefine *macro, size_t mid, Includes **includes,
-                  IncludeStack **incl_stack, Macros **macro_table,
-                  Ids **id_table);
+Lex include_macr(MacroDefine *macro, size_t mid, Includes **includes,
+                 IncludeStack **incl_stack, Macros **macro_table,
+                 Ids **id_table);
 
 Vector *process_define_args(Stream *stream, Ids **id_table) {
     Vector *args = create_vec(0, sizeof(size_t));
@@ -89,7 +91,7 @@ Lex process_define(IncludeResource *resc, Ids **id_table, Includes **includes,
                 } else {
                     return (Lex){.type = LEX_Invalid,
                                  .span = id.span,
-                                 .invalid = ExpectedNLAfterSlashMacroDefine};
+                                 .invalid = ExpectedGoodArgsMacroDefine};
                 }
             } else if (span.start[span.len] == '\0') {
                 result = (Lex){.type = LEX_Eof};
@@ -105,8 +107,8 @@ Lex process_define(IncludeResource *resc, Ids **id_table, Includes **includes,
             if (tok.type == LEX_Identifier) {
                 MacroDefine *macro = get_elem_dht(*macro_table, &tok.id);
                 if (macro) {
-                    tok = include_macro(macro, tok.id, includes, incl_stack,
-                                        macro_table, id_table);
+                    tok = include_macr(macro, tok.id, includes, incl_stack,
+                                       macro_table, id_table);
                 }
             }
             if (tok.type || tok.invalid) {
@@ -388,9 +390,9 @@ Lex lex_next_top_resc(IncludeStack *incl_stack, Includes *includes,
     }
 }
 
-Lex include_macro(MacroDefine *macro, size_t mid, Includes **includes,
-                  IncludeStack **incl_stack, Macros **macro_table,
-                  Ids **id_table) {
+Lex include_macr(MacroDefine *macro, size_t mid, Includes **includes,
+                 IncludeStack **incl_stack, Macros **macro_table,
+                 Ids **id_table) {
     if (macro->args) {
         Lex lex =
             lex_next_top_resc(*incl_stack, *includes, *macro_table, id_table);
@@ -408,9 +410,9 @@ Lex include_macro(MacroDefine *macro, size_t mid, Includes **includes,
                         MacroDefine *macro =
                             get_elem_dht(*macro_table, &lex.id);
                         if (macro) {
-                            lex = include_macro(macro, lex.id, includes,
-                                                incl_stack, macro_table,
-                                                id_table);
+                            lex =
+                                include_macr(macro, lex.id, includes,
+                                             incl_stack, macro_table, id_table);
                         }
                     }
                     if (lex.type == LEX_Eof) {
@@ -475,8 +477,8 @@ Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
     if (lex.type == LEX_Identifier) {
         MacroDefine *macro = get_elem_dht(*macro_table, &lex.id);
         if (macro) {
-            lex = include_macro(macro, lex.id, includes, incl_stack,
-                                macro_table, id_table);
+            lex = include_macr(macro, lex.id, includes, incl_stack, macro_table,
+                               id_table);
         }
     } else if (lex.type == LEX_MacroToken) {
         if (resc->incl_type == IncludeMacro) {
@@ -725,7 +727,7 @@ void pop_top_include(IncludeStack *incl_stack, Includes *includes,
     }
 }
 
-void print_include_stack(IncludeStack *incl_stack) {
+void print_incl_stack(IncludeStack *incl_stack) {
     for (size_t i = 0; i < incl_stack->length; i++) {
         size_t *id = at_elem_vec(incl_stack, i);
         printf("(include_id: %zu)\n", *id);
@@ -733,3 +735,5 @@ void print_include_stack(IncludeStack *incl_stack) {
 }
 
 void free_include_stack(IncludeStack *incl_stack) { free(incl_stack); }
+
+#endif // OLD_PP

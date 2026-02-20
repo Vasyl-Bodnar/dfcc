@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
     Preprocessor *pp = create_pp();
 
     String *path = from_cstr(argv[1]);
-    include_file(pp, path);
+    include_file(pp, path, &ids);
 
     Lex lex;
     do {
@@ -29,6 +29,7 @@ int main(int argc, char *argv[]) {
 
     print_lexes(lexes);
     print_ids(ids);
+    print_pp(pp);
 
     free(lexes);
     free(ids);

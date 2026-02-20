@@ -108,11 +108,11 @@ enum invalid_type {
     ExpectedStringErrorMacro, // #error has a bad string
     ExpectedStringWarnMacro,  // #warning has a bad string
     ExpectedValidIncludeFile,
+    ExpectedValidIncludeMacro,
     ExpectedIncludeHeader,
     ExpectedIdMacroDefine,
     ExpectedIdMacroUndefine,
     ExpectedGoodArgsMacroDefine,
-    ExpectedNLAfterSlashMacroDefine,
     ExpectedLessArgsMacro,
     ExpectedMoreArgsMacro,
     ExpectedIdIfDef,
@@ -208,7 +208,7 @@ typedef struct Span {
     size_t col;
 } Span;
 
-// Span, but with an idx
+// Span, but with an idx and macro detection
 // It is legal to change row and col as well
 typedef struct Stream {
     char *start;
@@ -216,7 +216,7 @@ typedef struct Stream {
     size_t row;
     size_t col;
     size_t idx;
-    int macro_line;
+    int macro_line; // 0 for "not in macro", 1 for "in"
 } Stream;
 
 typedef struct Lex {

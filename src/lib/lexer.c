@@ -1338,8 +1338,14 @@ void print_lexes(const Lexes *lexes) {
         Lex lex = *(Lex *)at_elem_vec((Lexes *)lexes, i);
         switch (lex.type) {
         case LEX_Invalid:
-            printf(":Lex Error %d: [%p, %zu, %zu, %zu]\n", lex.invalid,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            if (lex.invalid) {
+                printf(":Lex Error %d: [%p, %zu, %zu, %zu]\n", lex.invalid,
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
+            } else {
+                printf(":Lex Ok: [%p, %zu, %zu, %zu]\n", lex.span.start,
+                       lex.span.len, lex.span.row, lex.span.col);
+            }
             break;
         case LEX_Eof:
             printf(":End of File: [%p, %zu, %zu, %zu]\n", lex.span.start,

@@ -1,3 +1,4 @@
+#ifdef OLD_PP
 #ifndef PREPROCESSOR_H_
 #define PREPROCESSOR_H_
 
@@ -50,7 +51,7 @@ IncludeResource *get_top_include(IncludeStack *incl_stack, Includes *includes);
 void pop_top_include(IncludeStack *incl_stack, Includes *includes,
                      Macros *macros);
 
-void print_include_stack(IncludeStack *include_stack);
+void print_incl_stack(IncludeStack *include_stack);
 void print_includes(Includes *includes);
 void print_macros(Macros *macro_table);
 
@@ -59,3 +60,4 @@ void free_includes(Includes *includes);
 void free_macros(Macros *macro_table);
 
 #endif // PREPROCESSOR_H_
+#endif // OLD_PP
