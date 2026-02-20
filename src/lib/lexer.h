@@ -216,6 +216,7 @@ typedef struct Stream {
     size_t row;
     size_t col;
     size_t idx;
+    int macro_line;
 } Stream;
 
 typedef struct Lex {

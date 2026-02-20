@@ -396,7 +396,8 @@ Lex keyword_or_id(const Stream *stream, Vector **id_table) {
     return (Lex){0};
 }
 
-Lex macro(const Stream *stream, Vector **id_table) {
+Lex macro(Stream *stream, Vector **id_table) {
+    stream->macro_line = 1;
     if (stream->len > stream->idx) {
         if (nondigit(stream->start[stream->idx + 1])) {
             char *input = (char *)stream->start + stream->idx;
@@ -459,13 +460,15 @@ Lex macro(const Stream *stream, Vector **id_table) {
                     .type = LEX_MacroToken, .span = span, .macro = Undefine};
             }
         } else if (stream->start[stream->idx + 1] == '#') {
+            stream->macro_line = 0;
             return (Lex){.type = LEX_HashHash, .span = from_stream(stream, 2)};
         }
     }
+    stream->macro_line = 0;
     return (Lex){.type = LEX_Hash, .span = from_stream(stream, 1)};
 }
 
-Lex punctuator(const Stream *stream, Vector **id_table) {
+Lex punctuator(Stream *stream, Vector **id_table) {
     switch (stream->start[stream->idx]) {
     case '[':
         return (Lex){.type = LEX_LBracket, .span = from_stream(stream, 1)};
@@ -1282,7 +1285,15 @@ Lex lex_next(Stream *stream, Ids **id_table) {
                          .invalid = IllegalToken};
         }
 
-        if (stream->start[stream->idx] == '\n') {
+        if (stream->macro_line && stream->start[stream->idx] == '\\' &&
+            stream->start[stream->idx + 1] == '\n') {
+            stream->idx += 2;
+            stream->row += 1;
+            stream->col = 0;
+        } else if (stream->start[stream->idx] == '\n') {
+            if (stream->macro_line) {
+                stream->macro_line = 0;
+            }
             stream->idx += 1;
             stream->row += 1;
             stream->col = 0;

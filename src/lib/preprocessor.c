@@ -316,8 +316,8 @@ uint32_t process_include(const char *include, size_t len,
     return 1;
 }
 
-Lex include_file(Stream *stream, IncludeStack **incl_stack, Includes **includes,
-                 Ids **id_table) {
+Lex include_fil(Stream *stream, IncludeStack **incl_stack, Includes **includes,
+                Ids **id_table) {
     Lex lex = lex_next(stream, id_table);
     if (lex.type == LEX_Left) {
         Span str = {.start = lex.span.start + 1, .len = 0};
@@ -492,7 +492,7 @@ Lex preprocessed_lex_next(IncludeStack **incl_stack, size_t *if_depth,
                                      macro_table);
                 break;
             case Include:
-                lex = include_file(stream, incl_stack, includes, id_table);
+                lex = include_fil(stream, incl_stack, includes, id_table);
                 break;
             case Undefine: {
                 // TODO: Find a neater way
