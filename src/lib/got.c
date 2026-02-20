@@ -266,6 +266,69 @@ uint32_t delete_elem_ht(HashTable *ht, const void *key) {
     return 0;
 }
 
+uint32_t deletecb_elem_ht(HashTable *ht, const void *key,
+                          void callback(void *value)) {
+    uint8_t *control = ht->elems;
+    uint8_t *elem = ht->elems + calc_control_size(ht->capacity);
+
+    uint64_t keyhash = fnv1a_hash(key, ht->key_size);
+    uint64_t hi = keyhash & 0xFE00000000000000ull;
+    uint64_t lo = keyhash ^ hi;
+    hi >>= 57;
+
+#ifdef __SSE2__
+    const __m128i emptyv = _mm_set1_epi8(0x80);
+    __m128i hiv = _mm_set1_epi8(hi);
+    for (size_t i = lo & (ht->capacity - 1); i < ht->capacity;
+         i += GROUP_SIZE) {
+        __m128i controlv = _mm_loadu_si128((__m128i *)(control + i));
+        int res = _mm_movemask_epi8(_mm_cmpeq_epi8(hiv, controlv));
+        while (res) {
+            size_t j = i + __builtin_ctz(res);
+            if (!memcmp(key, elem + j * elem_size(ht), ht->key_size)) {
+                callback(elem + j * elem_size(ht) + ht->key_size);
+                control[j] = 0xFE;
+                ht->length -= 1;
+                return 1;
+            }
+            res &= res - 1;
+        }
+
+        if (_mm_movemask_epi8(_mm_cmpeq_epi8(controlv, emptyv))) {
+            return 0;
+        }
+    }
+
+#else // SWAR
+    const uint64_t emptyv = 0x8080808080808080ull;
+    const uint64_t onev = 0x0101010101010101ull;
+    uint64_t hiv = onev * hi;
+    for (size_t i = lo & (ht->capacity - 1); i < ht->capacity;
+         i += GROUP_SIZE) {
+        uint64_t controlv = *(uint64_t *)(control + i);
+        uint64_t res = (((hiv ^ controlv) - onev) & ~(hiv ^ controlv)) &
+                       0x8080808080808080ull;
+        while (res) {
+            size_t j = i + (__builtin_ctzll(res) >> 3);
+            if (!memcmp(key, elem + j * elem_size(ht), ht->key_size)) {
+                callback(elem + j * elem_size(ht) + ht->key_size);
+                control[j] = 0xFE;
+                ht->length -= 1;
+                return 1;
+            }
+            res &= res - 1;
+        }
+
+        if ((((controlv ^ emptyv) - onev) & ~(controlv ^ emptyv))) {
+            return 0;
+        }
+    }
+
+#endif
+
+    return 0;
+}
+
 Entry next_elem_ht(HashTable *ht, size_t *idx) {
     if (!idx || *idx >= ht->capacity) {
         return (Entry){0, 0};
@@ -338,6 +401,11 @@ void *get_elem_dht(HashTable *dht, const void *key) {
 
 uint32_t delete_elem_dht(HashTable *dht, const void *key) {
     return delete_elem_ht(dht, key);
+}
+
+uint32_t deletecb_elem_dht(HashTable *dht, const void *key,
+                           void callback(void *value)) {
+    return deletecb_elem_ht(dht, key, callback);
 }
 
 Entry next_elem_dht(HashTable *dht, size_t *idx) {

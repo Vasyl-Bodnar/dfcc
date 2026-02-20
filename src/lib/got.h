@@ -66,6 +66,11 @@ void *get_elem_ht(HashTable *ht, const void *key);
 // Otherwise 1.
 uint32_t delete_elem_ht(HashTable *ht, const void *key);
 
+// Like delete_elem_ht, but it performs a callback when it find a value.
+// Useful for cleanup like freeing or closing.
+uint32_t deletecb_elem_ht(HashTable *ht, const void *key,
+                          void callback(void *value));
+
 // Get the first live entry from the table starting at `idx`.
 // Returns pointers to key and value.
 // Both pointers will be set to 0 when finished (invalid `idx`).
@@ -92,6 +97,11 @@ void *get_elem_dht(HashTable *dht, const void *key);
 // `delete_elem_ht` dynamic variant, identical behaviour.
 // Note that if table expands the tombstones will be deleted completely.
 uint32_t delete_elem_dht(HashTable *dht, const void *key);
+
+// `deletecb_elem_ht` dynamic variant, identical behaviour.
+// Note that if table expands the tombstones will be deleted completely.
+uint32_t deletecb_elem_dht(HashTable *dht, const void *key,
+                           void callback(void *value));
 
 // `next_elem_dht` dynamic variant, identical behaviour.
 Entry next_elem_dht(HashTable *dht, size_t *idx);
