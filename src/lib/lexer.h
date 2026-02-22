@@ -104,6 +104,7 @@ enum invalid_type {
     IllegalString,
     // Preprocessor
     ExpectedImpossible,       // This should not happen
+    ExpectedValidMacro,       // We got something weird
     ExpectedFileNotMacro,     // Can't #define macros inside #define macro
     ExpectedStringErrorMacro, // #error has a bad string
     ExpectedStringWarnMacro,  // #warning has a bad string
@@ -183,6 +184,7 @@ enum lex_keyword {
 };
 
 enum macro_type {
+    InvalidMacro = 0,
     Include,
     Define,
     Undefine,
@@ -216,7 +218,8 @@ typedef struct Stream {
     size_t row;
     size_t col;
     size_t idx;
-    int macro_line; // 0 for "not in macro", 1 for "in"
+    // see enum macro_type, where InvalidMacro is eqv to no macro
+    int macro_line;
 } Stream;
 
 typedef struct Lex {

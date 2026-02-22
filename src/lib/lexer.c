@@ -397,7 +397,6 @@ Lex keyword_or_id(const Stream *stream, Vector **id_table) {
 }
 
 Lex macro(Stream *stream, Vector **id_table) {
-    stream->macro_line = 1;
     if (stream->len > stream->idx) {
         if (nondigit(stream->start[stream->idx + 1])) {
             char *input = (char *)stream->start + stream->idx;
@@ -409,12 +408,14 @@ Lex macro(Stream *stream, Vector **id_table) {
 
             Span span = {input, len, stream->row, stream->col};
             if (!memcmp("define", span.start + 1, span.len - 1)) {
+                stream->macro_line = Define;
                 return (Lex){
                     .type = LEX_MacroToken, .span = span, .macro = Define};
             } else if (!memcmp("include", span.start + 1, span.len - 1)) {
                 return (Lex){
                     .type = LEX_MacroToken, .span = span, .macro = Include};
             } else if (!memcmp("if", span.start + 1, span.len - 1)) {
+                stream->macro_line = If;
                 return (Lex){.type = LEX_MacroToken, .span = span, .macro = If};
             } else if (!memcmp("ifdef", span.start + 1, span.len - 1)) {
                 return (Lex){
@@ -427,6 +428,7 @@ Lex macro(Stream *stream, Vector **id_table) {
                 return (Lex){
                     .type = LEX_MacroToken, .span = span, .macro = Else};
             } else if (!memcmp("elif", span.start + 1, span.len - 1)) {
+                stream->macro_line = ElseIf;
                 return (Lex){
                     .type = LEX_MacroToken, .span = span, .macro = ElseIf};
             } else if (!memcmp("elifdef", span.start + 1, span.len - 1)) {
@@ -460,11 +462,9 @@ Lex macro(Stream *stream, Vector **id_table) {
                     .type = LEX_MacroToken, .span = span, .macro = Undefine};
             }
         } else if (stream->start[stream->idx + 1] == '#') {
-            stream->macro_line = 0;
             return (Lex){.type = LEX_HashHash, .span = from_stream(stream, 2)};
         }
     }
-    stream->macro_line = 0;
     return (Lex){.type = LEX_Hash, .span = from_stream(stream, 1)};
 }
 
@@ -1293,6 +1293,7 @@ Lex lex_next(Stream *stream, Ids **id_table) {
         } else if (stream->start[stream->idx] == '\n') {
             if (stream->macro_line) {
                 stream->macro_line = 0;
+                return (Lex){0};
             }
             stream->idx += 1;
             stream->row += 1;

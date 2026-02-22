@@ -1,4 +1,4 @@
 #include "basic-macros.h"
-#define id(x) x
-#define x id(100)
+// #define id(x) x
+#define x 1
 int main(void) { return x; }

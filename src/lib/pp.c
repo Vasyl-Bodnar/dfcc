@@ -11,6 +11,15 @@
 Lex lex_next_top_expand(Preprocessor *pp, Ids **id_table);
 IncludeResource *get_top_resc(Preprocessor *pp);
 
+// Free DefineMacro's members
+void clean_macro(void *define_macro) {
+    DefineMacro *macro = define_macro;
+    if (macro->args)
+        free(macro->args);
+    if (macro->lexes)
+        free(macro->lexes);
+}
+
 Lex macro_include_file(Preprocessor *pp, Ids **id_table) {
     IncludeResource *top = get_top_resc(pp);
     if (top->type == IncludeMacro) {
@@ -76,17 +85,18 @@ Lex macro_include_file(Preprocessor *pp, Ids **id_table) {
     }
 }
 
-// We get LEX_OK when including a file, which is not really bad, but interesting
 Lex lex_next_top(Preprocessor *pp, Ids **id_table) {
     if (pp->incl_stack->length) {
-        size_t *idx = at_elem_vec(pp->incl_stack, pp->incl_stack->length - 1);
-        IncludeResource *resc = at_elem_vec(pp->incl_table, *idx);
-
+        IncludeResource *resc = get_top_resc(pp);
         Lex lex;
         if (resc->type == IncludeFile) {
             lex = lex_next(&resc->stream, id_table);
         } else {
-            lex = *(Lex *)at_elem_vec(resc->lexes, resc->idx++);
+            if (resc->idx >= resc->lexes->length) {
+                lex = (Lex){.type = LEX_Eof};
+            } else {
+                lex = *(Lex *)at_elem_vec(resc->lexes, resc->idx++);
+            }
         }
 
         if (lex.type == LEX_Eof) {
@@ -110,39 +120,10 @@ Lex lex_next_top_expand(Preprocessor *pp, Ids **id_table) {
     return lex;
 }
 
-Lex pp_lex_next(Preprocessor *pp, Ids **id_table) {
-    Lex lex = lex_next_top_expand(pp, id_table);
-    if (lex.type == LEX_MacroToken) {
-        switch (lex.macro) {
-        case Include:
-            return macro_include_file(pp, id_table);
-        case Define:
-        case Undefine:
-        case If:
-        case IfDefined:
-        case IfNotDefined:
-        case Else:
-        case ElseIf:
-        case ElseIfDefined:
-        case ElseIfNotDefined:
-        case EndIf:
-        case Line:
-        case Embed:
-        case Error:
-        case Warning:
-        case Pragma:
-            return lex;
-        }
-    }
-    return lex;
-}
-
 // TODO: Is this the right way?
 int top_macro_line(Preprocessor *pp) {
     if (pp->incl_table->length) {
-        size_t idx =
-            *(size_t *)at_elem_vec(pp->incl_table, pp->incl_table->length - 1);
-        IncludeResource *resc = at_elem_vec(pp->incl_table, idx);
+        IncludeResource *resc = get_top_resc(pp);
         if (resc->type == IncludeFile) {
             return resc->stream.macro_line;
         } else {
@@ -152,14 +133,101 @@ int top_macro_line(Preprocessor *pp) {
     return 0;
 }
 
-// TODO: Incomplete
+// TODO: Arguments
 Lex define_macro(Preprocessor *pp, Ids **id_table) {
-    Lexes *lexes = create_lexes(1);
-    Lex lex;
-    do {
+    Lex lex = lex_next_top_expand(pp, id_table);
+    if (lex.type != LEX_Identifier) {
+        return (Lex){.type = LEX_Invalid,
+                     .span = lex.span,
+                     .invalid = ExpectedIdMacroDefine};
+    }
+
+    size_t mid = lex.id;
+    Lexes *lexes = create_lexes(0);
+    while (1) {
         lex = lex_next_top_expand(pp, id_table);
+        if (!top_macro_line(pp)) {
+            break;
+        }
         push_elem_vec(&lexes, &lex);
-    } while (top_macro_line(pp));
+    }
+
+    put_elem_dht(&pp->macro_table, &mid,
+                 &(DefineMacro){.args = 0, .lexes = lexes});
+
+    return pp_lex_next(pp, id_table);
+}
+
+// Ok is used to mark an end of a macro
+// TODO: It might be better to dedicate a token
+Lex pp_lex_next(Preprocessor *pp, Ids **id_table) {
+    Lex lex = lex_next_top_expand(pp, id_table);
+
+    if (lex.type == LEX_MacroToken) {
+        switch (lex.macro) {
+        case InvalidMacro:
+            return (Lex){.type = LEX_Invalid,
+                         .span = lex.span,
+                         .invalid = ExpectedValidMacro};
+        case Include:
+            return macro_include_file(pp, id_table);
+        case Error:
+            lex = lex_next_top_expand(pp, id_table);
+            if (lex.type == LEX_String) {
+                printf("#error %.*s on line %zu\n", (int)lex.span.len,
+                       lex.span.start, lex.span.row);
+                return (Lex){.type = LEX_Eof};
+            } else {
+                return (Lex){.type = LEX_Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedStringErrorMacro};
+            }
+        case Warning:
+            lex = lex_next_top_expand(pp, id_table);
+            if (lex.type == LEX_String) {
+                printf("#warning %.*s on line %zu\n", (int)lex.span.len,
+                       lex.span.start, lex.span.row);
+                return pp_lex_next(pp, id_table);
+            } else {
+                return (Lex){.type = LEX_Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedStringWarnMacro};
+            }
+        case Define:
+            return define_macro(pp, id_table);
+        case Undefine:
+            lex = lex_next_top_expand(pp, id_table);
+            if (lex.type == LEX_Identifier) {
+                deletecb_elem_dht(pp->macro_table, &lex.id, clean_macro);
+                return pp_lex_next(pp, id_table);
+            } else {
+                return (Lex){.type = LEX_Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedIdMacroUndefine};
+            }
+        case If:
+        case IfDefined:
+        case IfNotDefined:
+            pp->macro_if_depth += 1;
+            // TODO:
+            return lex;
+        case Else:
+        case ElseIf:
+        case ElseIfDefined:
+        case ElseIfNotDefined:
+            // TODO:
+            return lex;
+        case EndIf:
+            pp->macro_if_depth -= 1;
+            // TODO:
+            return lex;
+        case Line:
+        case Embed:
+        case Pragma:
+            // TODO:
+            return lex;
+        }
+    }
     return lex;
 }
 
@@ -192,7 +260,7 @@ Lex include_macro(Preprocessor *pp, size_t mid, DefineMacro *macro,
                                  .lexes = macro->lexes,
                              });
 
-    return lex_next_top_expand(pp, id_table);
+    return pp_lex_next(pp, id_table);
 }
 
 Lex include_file(Preprocessor *pp, String *path, Ids **id_table) {
@@ -247,7 +315,7 @@ Lex include_file(Preprocessor *pp, String *path, Ids **id_table) {
     size_t id = pp->incl_table->length - 1;
     push_elem_vec(&pp->incl_stack, &id);
 
-    return (Lex){0};
+    return pp_lex_next(pp, id_table);
 }
 
 // NOTE: Careful when relying on top.

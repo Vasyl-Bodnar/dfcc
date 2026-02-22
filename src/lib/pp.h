@@ -27,6 +27,7 @@ typedef struct IncludeResource {
             Lexes *lexes;
             size_t mid;
             size_t idx;
+            // see enum macro_type, where InvalidMacro is eqv to no macro
             int macro_line;
         };
     };
