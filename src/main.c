@@ -19,9 +19,9 @@ int main(int argc, char *argv[]) {
     Preprocessor *pp = create_pp();
 
     String *path = from_cstr(argv[1]);
-    include_file(pp, path, &ids);
+    Lex lex = include_file(pp, path, &ids);
+    push_elem_vec(&lexes, &lex);
 
-    Lex lex;
     do {
         lex = pp_lex_next(pp, &ids);
         push_elem_vec(&lexes, &lex);

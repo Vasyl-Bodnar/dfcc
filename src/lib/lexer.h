@@ -20,6 +20,7 @@ enum lex_type {
     LEX_StringU32,
     LEX_StringWide,
     LEX_MacroToken,
+    LEX_MacroEndToken,
     LEX_ConstantUnsignedLongLong,
     LEX_ConstantUnsignedLong,
     LEX_ConstantUnsignedBitPrecise,

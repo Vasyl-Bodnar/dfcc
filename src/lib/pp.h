@@ -33,15 +33,16 @@ typedef struct IncludeResource {
     };
 } IncludeResource;
 
-typedef Vector Includes;     // IncludeResources
-typedef Vector IncludeStack; // Ids to Includes
-typedef HashTable Macros;    // MacroDefines
+typedef Vector Includes;     // Actual IncludeResources
+typedef Vector IncludeStack; // Idxs to Includes
+typedef HashTable Macros;    // Mid -> DefineMacro hashtable
 
 typedef struct Preprocessor {
     Includes *incl_table;
     IncludeStack *incl_stack;
     Macros *macro_table;
     size_t macro_if_depth;
+    int disabled_if; // Inside non-taken branch
 } Preprocessor;
 
 Lex pp_lex_next(Preprocessor *pp, Ids **id_table);

@@ -50,6 +50,8 @@ Lex macro_include_file(Preprocessor *pp, Ids **id_table) {
 
         char path[PATH_MAX];
 
+        // TODO: We actually need to check system path like /usr/local, etc.
+        // Also the pathes included with -Ipath
         realpath(top->path->s, path);
         size_t path_len = strlen(path);
 
@@ -91,20 +93,27 @@ Lex lex_next_top(Preprocessor *pp, Ids **id_table) {
         Lex lex;
         if (resc->type == IncludeFile) {
             lex = lex_next(&resc->stream, id_table);
+
+            if (lex.type == LEX_Eof) {
+                resc->stream.idx = 0;
+                resc->stream.col = 0;
+                resc->stream.row = 0;
+                resc->stream.macro_line = 0;
+                pop_elem_vec(pp->incl_stack);
+                return lex_next_top(pp, id_table);
+            }
+
+            return lex;
         } else {
             if (resc->idx >= resc->lexes->length) {
-                lex = (Lex){.type = LEX_Eof};
+                resc->idx = 0;
+                resc->macro_line = 0;
+                pop_elem_vec(pp->incl_stack);
+                return lex_next_top(pp, id_table);
             } else {
-                lex = *(Lex *)at_elem_vec(resc->lexes, resc->idx++);
+                return *(Lex *)at_elem_vec(resc->lexes, resc->idx++);
             }
         }
-
-        if (lex.type == LEX_Eof) {
-            pop_elem_vec(pp->incl_stack);
-            return lex_next_top(pp, id_table);
-        }
-
-        return lex;
     }
     return (Lex){.type = LEX_Eof};
 }
@@ -135,7 +144,7 @@ int top_macro_line(Preprocessor *pp) {
 
 // TODO: Arguments
 Lex define_macro(Preprocessor *pp, Ids **id_table) {
-    Lex lex = lex_next_top_expand(pp, id_table);
+    Lex lex = lex_next_top(pp, id_table);
     if (lex.type != LEX_Identifier) {
         return (Lex){.type = LEX_Invalid,
                      .span = lex.span,
@@ -146,7 +155,7 @@ Lex define_macro(Preprocessor *pp, Ids **id_table) {
     Lexes *lexes = create_lexes(0);
     while (1) {
         lex = lex_next_top_expand(pp, id_table);
-        if (!top_macro_line(pp)) {
+        if (lex.type == LEX_MacroEndToken) {
             break;
         }
         push_elem_vec(&lexes, &lex);
@@ -156,6 +165,55 @@ Lex define_macro(Preprocessor *pp, Ids **id_table) {
                  &(DefineMacro){.args = 0, .lexes = lexes});
 
     return pp_lex_next(pp, id_table);
+}
+
+// TODO: We do not need to actually lex the stream
+// Requires augments to the lexer
+Lex skip_if_clause(Preprocessor *pp, size_t depth, Ids **id_table) {
+    Lex lex;
+    do {
+        lex = lex_next_top(pp, id_table);
+    } while (lex.type != LEX_MacroToken);
+
+    // NOTE: We can only be here if we did not take the previous branch
+    switch (lex.macro) {
+    case Else:
+        return pp_lex_next(pp, id_table);
+    // TODO: case ElseIf:
+    case ElseIfDefined:
+        lex = lex_next_top(pp, id_table);
+        if (lex.type == LEX_Identifier) {
+            DefineMacro *macro = get_elem_dht(pp->macro_table, &lex.id);
+            if (macro) {
+                return pp_lex_next(pp, id_table);
+            } else {
+                return skip_if_clause(pp, pp->macro_if_depth, id_table);
+            }
+        } else {
+            return (Lex){.type = LEX_Invalid,
+                         .span = lex.span,
+                         .invalid = ExpectedIdIfDef};
+        }
+    case ElseIfNotDefined:
+        lex = lex_next_top(pp, id_table);
+        if (lex.type == LEX_Identifier) {
+            DefineMacro *macro = get_elem_dht(pp->macro_table, &lex.id);
+            if (macro) {
+                return skip_if_clause(pp, pp->macro_if_depth, id_table);
+            } else {
+                return pp_lex_next(pp, id_table);
+            }
+        } else {
+            return (Lex){.type = LEX_Invalid,
+                         .span = lex.span,
+                         .invalid = ExpectedIdIfDef};
+        }
+    case EndIf:
+        pp->macro_if_depth -= 1;
+        return pp_lex_next(pp, id_table);
+    default:
+        return skip_if_clause(pp, depth, id_table);
+    }
 }
 
 // Ok is used to mark an end of a macro
@@ -196,7 +254,7 @@ Lex pp_lex_next(Preprocessor *pp, Ids **id_table) {
         case Define:
             return define_macro(pp, id_table);
         case Undefine:
-            lex = lex_next_top_expand(pp, id_table);
+            lex = lex_next_top(pp, id_table);
             if (lex.type == LEX_Identifier) {
                 deletecb_elem_dht(pp->macro_table, &lex.id, clean_macro);
                 return pp_lex_next(pp, id_table);
@@ -206,28 +264,60 @@ Lex pp_lex_next(Preprocessor *pp, Ids **id_table) {
                              .invalid = ExpectedIdMacroUndefine};
             }
         case If:
-        case IfDefined:
-        case IfNotDefined:
             pp->macro_if_depth += 1;
             // TODO:
             return lex;
+        case IfDefined:
+            lex = lex_next_top(pp, id_table);
+            if (lex.type == LEX_Identifier) {
+                DefineMacro *macro = get_elem_dht(pp->macro_table, &lex.id);
+                pp->macro_if_depth += 1;
+                if (macro) {
+                    return pp_lex_next(pp, id_table);
+                } else {
+                    return skip_if_clause(pp, pp->macro_if_depth, id_table);
+                }
+            } else {
+                return (Lex){.type = LEX_Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedIdIfDef};
+            }
+        case IfNotDefined:
+            lex = lex_next_top(pp, id_table);
+            if (lex.type == LEX_Identifier) {
+                DefineMacro *macro = get_elem_dht(pp->macro_table, &lex.id);
+                pp->macro_if_depth += 1;
+                if (macro) {
+                    return skip_if_clause(pp, pp->macro_if_depth, id_table);
+                } else {
+                    return pp_lex_next(pp, id_table);
+                }
+            } else {
+                return (Lex){.type = LEX_Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedIdIfDef};
+            }
         case Else:
         case ElseIf:
         case ElseIfDefined:
         case ElseIfNotDefined:
-            // TODO:
-            return lex;
+            // NOTE: We can only be here if we took the previous branch
+            return skip_if_clause(pp, pp->macro_if_depth, id_table);
         case EndIf:
             pp->macro_if_depth -= 1;
+            return pp_lex_next(pp, id_table);
+        case Line:
             // TODO:
             return lex;
-        case Line:
         case Embed:
+            // TODO:
+            return lex;
         case Pragma:
             // TODO:
             return lex;
         }
     }
+
     return lex;
 }
 
@@ -271,13 +361,14 @@ Lex include_file(Preprocessor *pp, String *path, Ids **id_table) {
             resc->path->length == path->length &&
             !memcmp(resc->path->s, path->s, resc->path->length)) {
             push_elem_vec(&pp->incl_stack, &i);
-            return lex_next_top_expand(pp, id_table);
+            return pp_lex_next(pp, id_table);
         }
     }
 
     FILE *file = fopen(path->s, "r");
     if (!file) {
-        puts("Such a file could not be found");
+        printf("File \"%.*s\" could not be found\n", (int)path->length,
+               path->s);
         return (Lex){.type = LEX_Invalid, .invalid = ExpectedValidIncludeFile};
     }
 
@@ -344,10 +435,10 @@ void print_incl_table(Includes *incl_table) {
     for (size_t i = 0; i < incl_table->length; i++) {
         IncludeResource *resc = at_elem_vec(incl_table, i);
         if (resc->type == IncludeFile) {
-            printf(
-                "<path: %s base-ptr: %p len: %zu row: %zu col: %zu idx: %zu>\n",
-                resc->path->s, resc->stream.start, resc->stream.len,
-                resc->stream.row, resc->stream.col, resc->stream.idx);
+            printf("<path: %s base-ptr: %p len: %zu row: %zu col: %zu idx: "
+                   "%zu>\n",
+                   resc->path->s, resc->stream.start, resc->stream.len,
+                   resc->stream.row, resc->stream.col, resc->stream.idx);
         } else if (resc->type == IncludeMacro) {
             printf("<mid: %zu token-idx: %zu", resc->mid, resc->idx);
             if (resc->lexes) {

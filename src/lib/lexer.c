@@ -1277,14 +1277,6 @@ Lex lex_next(Stream *stream, Ids **id_table) {
             return punct;
         }
 
-        if (!space(stream->start[stream->idx])) {
-            stream->idx += 1;
-            stream->col += 1;
-            return (Lex){.type = LEX_Invalid,
-                         .span = from_stream_off(stream, -1, 1),
-                         .invalid = IllegalToken};
-        }
-
         if (stream->macro_line && stream->start[stream->idx] == '\\' &&
             stream->start[stream->idx + 1] == '\n') {
             stream->idx += 2;
@@ -1293,12 +1285,22 @@ Lex lex_next(Stream *stream, Ids **id_table) {
         } else if (stream->start[stream->idx] == '\n') {
             if (stream->macro_line) {
                 stream->macro_line = 0;
-                return (Lex){0};
+                return (Lex){
+                    .type = LEX_MacroEndToken,
+                    .span = from_stream_off(stream, -1, 1),
+                };
             }
             stream->idx += 1;
             stream->row += 1;
             stream->col = 0;
         } else {
+            if (!space(stream->start[stream->idx])) {
+                stream->idx += 1;
+                stream->col += 1;
+                return (Lex){.type = LEX_Invalid,
+                             .span = from_stream_off(stream, -1, 1),
+                             .invalid = IllegalToken};
+            }
             stream->idx += 1;
             stream->col += 1;
         }
@@ -1698,7 +1700,11 @@ void print_lexes(const Lexes *lexes) {
             }
             break;
         case LEX_MacroToken:
-            printf(":MacroToken: [%p, %zu, %zu, %zu]\n", lex.span.start,
+            printf(":MacroToken: %d [%p, %zu, %zu, %zu]\n", lex.macro,
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            break;
+        case LEX_MacroEndToken:
+            printf(":MacroEndToken: [%p, %zu, %zu, %zu]\n", lex.span.start,
                    lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_LBracket:
