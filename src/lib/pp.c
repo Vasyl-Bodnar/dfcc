@@ -1,3 +1,6 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "pp.h"
 #include "got.h"
 #include "lexer.h"
@@ -129,7 +132,6 @@ Lex lex_next_top_expand(Preprocessor *pp, Ids **id_table) {
     return lex;
 }
 
-// TODO: Is this the right way?
 int top_macro_line(Preprocessor *pp) {
     if (pp->incl_table->length) {
         IncludeResource *resc = get_top_resc(pp);
@@ -335,7 +337,6 @@ void insert_include_macro(Preprocessor *pp, IncludeResource *macro_resc) {
     push_elem_vec(&pp->incl_stack, &id);
 }
 
-// TODO: Optimize redundant includes
 Lex include_macro(Preprocessor *pp, size_t mid, DefineMacro *macro,
                   Ids **id_table) {
     if (macro->args) {
