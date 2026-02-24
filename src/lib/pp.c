@@ -14,6 +14,21 @@
 Lex lex_next_top_expand(Preprocessor *pp, Ids **id_table);
 IncludeResource *get_top_resc(Preprocessor *pp);
 
+Args *create_args(size_t capacity) {
+    return create_vec(capacity, sizeof(Lexes *));
+}
+
+void delete_args(Args *args) {
+    for (size_t j = 0; j < args->length; j++) {
+        delete_vec(*(Lexes **)at_elem_vec(args, j));
+    }
+    delete_vec(args);
+}
+
+IdsRef *create_idsref(size_t capacity) {
+    return create_vec(capacity, sizeof(size_t));
+}
+
 // Free DefineMacro's members
 void clean_macro(void *define_macro) {
     DefineMacro *macro = define_macro;
@@ -25,7 +40,7 @@ void clean_macro(void *define_macro) {
 
 Lex macro_include_file(Preprocessor *pp, Ids **id_table) {
     IncludeResource *top = get_top_resc(pp);
-    if (top->type == IncludeMacro) {
+    if (top->type != IncludeFile) {
         return (Lex){.type = LEX_Invalid, .invalid = ExpectedFileNotMacro};
     }
 
@@ -121,12 +136,56 @@ Lex lex_next_top(Preprocessor *pp, Ids **id_table) {
     return (Lex){.type = LEX_Eof};
 }
 
+// NOTE: A bit of IncludeResource abuse below
+IncludeResource scan_macros(Preprocessor *pp, size_t id, Ids **id_table) {
+    for (size_t i = pp->incl_stack->length - 1; i != (size_t)-1; --i) {
+        size_t idx = *(size_t *)at_elem_vec(pp->incl_stack, i);
+        IncludeResource *resc = at_elem_vec(pp->incl_table, idx);
+        if (resc->type == IncludeMacro) {
+            // TODO: A random segfault happens here when trying to parse got.c
+            DefineMacro *macro = get_elem_dht(pp->macro_table, &resc->mid);
+            if (macro && macro->args) {
+                for (size_t j = 0; j < macro->args->length; j++) {
+                    size_t idx = *(size_t *)at_elem_vec(macro->args, j);
+                    if (idx == id) {
+                        Lexes **lexes = at_elem_vec(resc->args, j);
+                        return (IncludeResource){.type = IncludeParameter,
+                                                 .idx = 0,
+                                                 .lexes = *lexes,
+                                                 .args = 0,
+                                                 .mid = id,
+                                                 .macro_line = 0};
+                    }
+                }
+            }
+        }
+    }
+
+    DefineMacro *macro = get_elem_dht(pp->macro_table, &id);
+    if (macro) {
+        Args *args = 0;
+        if (macro->args) {
+            args = create_args(macro->args->length);
+        }
+        return (IncludeResource){.type = IncludeMacro,
+                                 .idx = 0,
+                                 .lexes = macro->lexes,
+                                 .args = args,
+                                 .mid = id,
+                                 .macro_line = 0};
+    } else {
+        return (IncludeResource){
+            .type = InvalidInclude,
+        };
+    }
+}
+
 Lex lex_next_top_expand(Preprocessor *pp, Ids **id_table) {
     Lex lex = lex_next_top(pp, id_table);
     if (lex.type == LEX_Identifier) {
-        DefineMacro *macro = get_elem_dht(pp->macro_table, &lex.id);
-        if (macro) {
-            return include_macro(pp, lex.id, macro, id_table);
+        IncludeResource partial = scan_macros(pp, lex.id, id_table);
+        if (partial.type != InvalidInclude) {
+            return include_macro(pp, partial, id_table);
         }
     }
     return lex;
@@ -144,7 +203,8 @@ int top_macro_line(Preprocessor *pp) {
     return 0;
 }
 
-// TODO: Arguments
+// TODO: Variadic
+// Potentially handle arguments in the lexer
 Lex define_macro(Preprocessor *pp, Ids **id_table) {
     Lex lex = lex_next_top(pp, id_table);
     if (lex.type != LEX_Identifier) {
@@ -155,16 +215,43 @@ Lex define_macro(Preprocessor *pp, Ids **id_table) {
 
     size_t mid = lex.id;
     Lexes *lexes = create_lexes(0);
-    while (1) {
+    Ids *args = 0;
+
+    lex = lex_next_top_expand(pp, id_table);
+    // TODO: This must be next to id, no space allowed
+    if (lex.type == LEX_LParen) {
+        args = create_idsref(1);
+
+        Lex prev;
+        while (lex.type != LEX_RParen) {
+            prev = lex;
+            lex = lex_next_top(pp, id_table);
+            if (lex.type == LEX_Comma || lex.type == LEX_RParen) {
+            } else if ((prev.type == LEX_LParen || prev.type == LEX_Comma) &&
+                       lex.type == LEX_Identifier) {
+                push_elem_vec(&args, &lex.id);
+            } else {
+                delete_vec(lexes);
+                delete_vec(args);
+                return (Lex){.type = LEX_Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedGoodArgsMacroDefine};
+            }
+        }
+
         lex = lex_next_top_expand(pp, id_table);
+    }
+
+    while (1) {
         if (lex.type == LEX_MacroEndToken) {
             break;
         }
         push_elem_vec(&lexes, &lex);
+        lex = lex_next_top_expand(pp, id_table);
     }
 
     put_elem_dht(&pp->macro_table, &mid,
-                 &(DefineMacro){.args = 0, .lexes = lexes});
+                 &(DefineMacro){.args = args, .lexes = lexes});
 
     return pp_lex_next(pp, id_table);
 }
@@ -341,8 +428,10 @@ Lex pp_lex_next(Preprocessor *pp, Ids **id_table) {
 void insert_include_macro(Preprocessor *pp, IncludeResource *macro_resc) {
     for (size_t i = 0; i < pp->incl_table->length; i++) {
         IncludeResource *resc = at_elem_vec(pp->incl_table, i);
-        if (resc->type == IncludeMacro && !resc->idx &&
-            resc->mid == macro_resc->mid && resc->lexes == macro_resc->lexes) {
+        if ((resc->type == IncludeMacro || resc->type == IncludeParameter) &&
+            !resc->idx && resc->mid == macro_resc->mid &&
+            resc->lexes == macro_resc->lexes) {
+            resc->args = macro_resc->args;
             push_elem_vec(&pp->incl_stack, &i);
             return;
         }
@@ -352,19 +441,36 @@ void insert_include_macro(Preprocessor *pp, IncludeResource *macro_resc) {
     push_elem_vec(&pp->incl_stack, &id);
 }
 
-Lex include_macro(Preprocessor *pp, size_t mid, DefineMacro *macro,
-                  Ids **id_table) {
-    if (macro->args) {
-        return (Lex){.type = LEX_Invalid, .invalid = ExpectedValidIncludeMacro};
+Lex include_macro(Preprocessor *pp, IncludeResource partial, Ids **id_table) {
+    if (partial.args) {
+        Lexes *lexes = create_lexes(0);
+        Lex lex = lex_next_top_expand(pp, id_table);
+        if (lex.type == LEX_LParen) {
+            size_t depth = 1;
+            while (depth) {
+                lex = lex_next_top_expand(pp, id_table);
+                if (lex.type == LEX_Comma) {
+                    push_elem_vec(&partial.args, &lexes);
+                    lexes = create_lexes(0);
+                } else if (lex.type == LEX_RParen) {
+                    depth -= 1;
+                } else if (lex.type == LEX_LParen) {
+                    depth += 1;
+                } else {
+                    push_elem_vec(&lexes, &lex);
+                }
+            }
+            push_elem_vec(&partial.args, &lexes);
+        } else {
+            delete_vec(lexes);
+            delete_args(partial.args);
+            return (Lex){.type = LEX_Invalid,
+                         .span = lex.span,
+                         .invalid = ExpectedValidMacro};
+        }
     }
 
-    insert_include_macro(pp, &(IncludeResource){
-                                 .type = IncludeMacro,
-                                 .mid = mid,
-                                 .macro_line = top_macro_line(pp),
-                                 .idx = 0,
-                                 .lexes = macro->lexes,
-                             });
+    insert_include_macro(pp, &partial);
 
     return pp_lex_next(pp, id_table);
 }
@@ -438,10 +544,26 @@ void print_macro_table(Macros *macro_table) {
     size_t idx = 0;
     while ((entry = next_elem_dht(macro_table, &idx)).key) {
         DefineMacro *macro = entry.value;
-        printf("#string_id: %zu args: %p", *(size_t *)entry.key, macro->args);
+        printf("#string-id: %zu", *(size_t *)entry.key);
+        if (macro->args) {
+            printf("\n.args-len: %zu args:", macro->args->length);
+            for (size_t i = 0; i < macro->args->length; i++) {
+                printf("\nid: %zu", *(size_t *)at_elem_vec(macro->args, i));
+            }
+            if (macro->lexes) {
+                printf("\n.elems-len: %zu elems:\n", macro->lexes->length);
+                print_lexes(macro->lexes);
+            }
+            printf("#\n");
+            continue;
+        }
         if (macro->lexes) {
-            printf(" elems-len: %zu elems:\n", macro->lexes->length);
-            print_lexes(macro->lexes);
+            if (macro->lexes->length) {
+                printf(" elems-len: %zu elems:\n", macro->lexes->length);
+                print_lexes(macro->lexes);
+            } else {
+                printf(" elems-len: %zu elems: none", macro->lexes->length);
+            }
         }
         printf("#\n");
     }
@@ -451,17 +573,31 @@ void print_incl_table(Includes *incl_table) {
     for (size_t i = 0; i < incl_table->length; i++) {
         IncludeResource *resc = at_elem_vec(incl_table, i);
         if (resc->type == IncludeFile) {
-            printf("<path: %s base-ptr: %p len: %zu row: %zu col: %zu idx: "
-                   "%zu>\n",
-                   resc->path->s, resc->stream.start, resc->stream.len,
-                   resc->stream.row, resc->stream.col, resc->stream.idx);
+            printf(
+                "<FILE: path: %s base-ptr: %p len: %zu row: %zu col: %zu idx: "
+                "%zu>\n",
+                resc->path->s, resc->stream.start, resc->stream.len,
+                resc->stream.row, resc->stream.col, resc->stream.idx);
         } else if (resc->type == IncludeMacro) {
-            printf("<mid: %zu token-idx: %zu", resc->mid, resc->idx);
+            printf("<MACRO: mid: %zu token-idx: %zu", resc->mid, resc->idx);
+            if (resc->args) {
+                printf(" args-len: %zu args: %p", resc->args->length,
+                       resc->args);
+            }
             if (resc->lexes) {
                 printf(" elems-len: %zu elems:\n", resc->lexes->length);
                 print_lexes(resc->lexes);
             }
             printf(">\n");
+        } else if (resc->type == IncludeParameter) {
+            printf("<PARAM: mid: %zu token-idx: %zu", resc->mid, resc->idx);
+            if (resc->lexes) {
+                printf(" elems-len: %zu elems:\n", resc->lexes->length);
+                print_lexes(resc->lexes);
+            }
+            printf(">\n");
+        } else {
+            printf("<INVALID RESOURCE>\n");
         }
     }
 }
@@ -499,8 +635,13 @@ void delete_pp(Preprocessor *pp) {
         if (resc->type == IncludeFile) {
             delete_str(resc->path);
             free(resc->stream.start);
-        } else {
-            delete_vec(resc->lexes);
+        } else if (resc->type == IncludeMacro) {
+            if (resc->lexes) {
+                delete_vec(resc->lexes);
+            }
+            if (resc->args) {
+                delete_args(resc->args);
+            }
         }
     }
     delete_vec(pp->incl_table);

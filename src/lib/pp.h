@@ -7,13 +7,44 @@
 #include "got.h"
 #include "lexer.h"
 
+typedef HashTable Macros;    // Mid -> DefineMacro hashtable
+typedef Vector Args;         // Each arg is Lexes*
+typedef Vector Includes;     // Actual IncludeResources
+typedef Vector IdsRef;       // Idxs to Ids
+typedef Vector IncludeStack; // Idxs to Includes
+
+/* The way macros work.
+ * We have three systems here, *DefineMacro*, *IncludeResource*, *Preprocessor*.
+ * Preprocessor contains all the macro definitions in a hashtable.
+ *
+ * *DefineMacro* is that definition, referenced by its own id.
+ * E.g. `#define x\\n` will be a *DefineMacro* at id of x with no lexes or args.
+ * Args may be references to paramater ids.
+ * Lexes may be the actual lexes to replace with.
+ *
+ * *IncludeResource* is the boots on the ground, what is currently being
+ * replaced and exhausted. It uses a text stream or a macro.
+ *
+ * The macro in this case has its id, lexes, and lexes of arguments (to replace
+ * paramaters), as well as idx on where it currently is in the main lexes.
+ *
+ * *Preprocessor* then utilizes *IncludeResources* on a stack to produce text or
+ * lexes directly.
+ *
+ * *DefineMacro* thus acts as a blueprint from an id to create a real
+ * exhaustable *IncludeResource* for use of the *Preprocessor* to produce
+ * the next lex.
+ */
 typedef struct DefineMacro {
-    Ids *args;
+    IdsRef *args;
     Lexes *lexes; // what to replace with
 } DefineMacro;
 
 enum include_type {
+    InvalidInclude = 0,
     IncludeMacro,
+    // IncludeMacro that cannot have args and is not hashtable backed
+    IncludeParameter,
     IncludeFile,
 };
 
@@ -27,6 +58,7 @@ typedef struct IncludeResource {
             Stream stream;
         };
         struct {
+            Args *args;
             Lexes *lexes;
             size_t mid;
             size_t idx;
@@ -35,10 +67,6 @@ typedef struct IncludeResource {
         };
     };
 } IncludeResource;
-
-typedef Vector Includes;     // Actual IncludeResources
-typedef Vector IncludeStack; // Idxs to Includes
-typedef HashTable Macros;    // Mid -> DefineMacro hashtable
 
 typedef struct Preprocessor {
     Includes *incl_table;
@@ -51,8 +79,7 @@ typedef struct Preprocessor {
 Lex pp_lex_next(Preprocessor *pp, Ids **id_table);
 
 Lex include_file(Preprocessor *pp, String *path, Ids **id_table);
-Lex include_macro(Preprocessor *pp, size_t mid, DefineMacro *macro,
-                  Ids **id_table);
+Lex include_macro(Preprocessor *pp, IncludeResource partial, Ids **id_table);
 
 Preprocessor *create_pp();
 void print_pp(Preprocessor *pp);
