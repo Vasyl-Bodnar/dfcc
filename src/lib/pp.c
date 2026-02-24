@@ -171,13 +171,28 @@ Lex define_macro(Preprocessor *pp, Ids **id_table) {
 
 // TODO: We do not need to actually lex the stream
 // Requires augments to the lexer
-Lex skip_if_clause(Preprocessor *pp, size_t depth, Ids **id_table) {
+// `else_clause` is for when we took a branch already and just need to endif
+Lex skip_if_clause(Preprocessor *pp, size_t depth, int else_clause,
+                   Ids **id_table) {
     Lex lex;
     do {
         lex = lex_next_top(pp, id_table);
     } while (lex.type != LEX_MacroToken);
 
-    // NOTE: We can only be here if we did not take the previous branch
+    if (else_clause) {
+        do {
+            lex = lex_next_top(pp, id_table);
+            if (lex.type == LEX_Eof) {
+                return (Lex){.type = LEX_Invalid,
+                             .span = lex.span,
+                             .invalid = ExpectedIfEndIf};
+            }
+        } while (lex.type != LEX_MacroToken && lex.macro != EndIf);
+
+        return pp_lex_next(pp, id_table);
+    }
+
+    // NOTE: We can only be here if we did not take the previous branches
     switch (lex.macro) {
     case Else:
         return pp_lex_next(pp, id_table);
@@ -189,7 +204,8 @@ Lex skip_if_clause(Preprocessor *pp, size_t depth, Ids **id_table) {
             if (macro) {
                 return pp_lex_next(pp, id_table);
             } else {
-                return skip_if_clause(pp, pp->macro_if_depth, id_table);
+                return skip_if_clause(pp, pp->macro_if_depth, else_clause,
+                                      id_table);
             }
         } else {
             return (Lex){.type = LEX_Invalid,
@@ -201,7 +217,8 @@ Lex skip_if_clause(Preprocessor *pp, size_t depth, Ids **id_table) {
         if (lex.type == LEX_Identifier) {
             DefineMacro *macro = get_elem_dht(pp->macro_table, &lex.id);
             if (macro) {
-                return skip_if_clause(pp, pp->macro_if_depth, id_table);
+                return skip_if_clause(pp, pp->macro_if_depth, else_clause,
+                                      id_table);
             } else {
                 return pp_lex_next(pp, id_table);
             }
@@ -214,12 +231,10 @@ Lex skip_if_clause(Preprocessor *pp, size_t depth, Ids **id_table) {
         pp->macro_if_depth -= 1;
         return pp_lex_next(pp, id_table);
     default:
-        return skip_if_clause(pp, depth, id_table);
+        return skip_if_clause(pp, depth, else_clause, id_table);
     }
 }
 
-// Ok is used to mark an end of a macro
-// TODO: It might be better to dedicate a token
 Lex pp_lex_next(Preprocessor *pp, Ids **id_table) {
     Lex lex = lex_next_top_expand(pp, id_table);
 
@@ -277,7 +292,7 @@ Lex pp_lex_next(Preprocessor *pp, Ids **id_table) {
                 if (macro) {
                     return pp_lex_next(pp, id_table);
                 } else {
-                    return skip_if_clause(pp, pp->macro_if_depth, id_table);
+                    return skip_if_clause(pp, pp->macro_if_depth, 0, id_table);
                 }
             } else {
                 return (Lex){.type = LEX_Invalid,
@@ -290,7 +305,7 @@ Lex pp_lex_next(Preprocessor *pp, Ids **id_table) {
                 DefineMacro *macro = get_elem_dht(pp->macro_table, &lex.id);
                 pp->macro_if_depth += 1;
                 if (macro) {
-                    return skip_if_clause(pp, pp->macro_if_depth, id_table);
+                    return skip_if_clause(pp, pp->macro_if_depth, 0, id_table);
                 } else {
                     return pp_lex_next(pp, id_table);
                 }
@@ -304,7 +319,7 @@ Lex pp_lex_next(Preprocessor *pp, Ids **id_table) {
         case ElseIfDefined:
         case ElseIfNotDefined:
             // NOTE: We can only be here if we took the previous branch
-            return skip_if_clause(pp, pp->macro_if_depth, id_table);
+            return skip_if_clause(pp, pp->macro_if_depth, 1, id_table);
         case EndIf:
             pp->macro_if_depth -= 1;
             return pp_lex_next(pp, id_table);
