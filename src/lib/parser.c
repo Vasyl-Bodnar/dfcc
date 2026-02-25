@@ -1,3 +1,6 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "parser.h"
 #include "lexer.h"
 #include "pp.h"
@@ -49,6 +52,8 @@ void erase_ctx(Parser *parser) {
     parser->idx = idx;
 }
 
+// NOTE: We use the assumption that Strings and Constants are in a row
+// Could be forced if we use X macros, but currently this works
 Ast primary_expression(Parser *parser) {
     Lex lex = parse_next(parser);
     switch (lex.type) {
@@ -63,116 +68,40 @@ Ast primary_expression(Parser *parser) {
             .id = lex.id,
         };
     case LEX_String:
-        return (Ast){
-            .type = AST_String,
-            .span = lex.span,
-            .string = {.type = ASCII, .id = lex.id},
-        };
     case LEX_StringU8:
-        return (Ast){
-            .type = AST_String,
-            .span = lex.span,
-            .string = {.type = U8, .id = lex.id},
-        };
     case LEX_StringU16:
-        return (Ast){
-            .type = AST_String,
-            .span = lex.span,
-            .string = {.type = U16, .id = lex.id},
-        };
     case LEX_StringU32:
-        return (Ast){
-            .type = AST_String,
-            .span = lex.span,
-            .string = {.type = U32, .id = lex.id},
-        };
     case LEX_StringWide:
         return (Ast){
             .type = AST_String,
             .span = lex.span,
-            .string = {.type = Wide, .id = lex.id},
+            .string = {.type = ASCII + (lex.type - LEX_String), .id = lex.id},
         };
     case LEX_ConstantUnsignedLongLong:
-        return (Ast){
-            .type = AST_Constant,
-            .span = lex.span,
-            .constant = {.type = UnsignedLongLong, .c = lex.constant},
-        };
     case LEX_ConstantUnsignedLong:
-        return (Ast){
-            .type = AST_Constant,
-            .span = lex.span,
-            .constant = {.type = UnsignedLong, .c = lex.constant},
-        };
     case LEX_ConstantUnsignedBitPrecise:
+    case LEX_ConstantUnsigned:
+    case LEX_ConstantLongLong:
+    case LEX_ConstantLong:
+    case LEX_ConstantBitPrecise:
+    case LEX_Constant:
+    case LEX_ConstantFloat:
+    case LEX_ConstantDouble:
+    case LEX_ConstantLongDouble:
+    case LEX_ConstantDecimal32:
+    case LEX_ConstantDecimal64:
+    case LEX_ConstantDecimal128:
+    case LEX_ConstantChar:
+    case LEX_ConstantCharU8:
+    case LEX_ConstantCharU16:
+    case LEX_ConstantCharU32:
+    case LEX_ConstantCharWide:
         return (Ast){
             .type = AST_Constant,
             .span = lex.span,
-            .constant = {.type = UnsignedBitPrecise, .c = lex.constant}};
-    case LEX_ConstantUnsigned:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = Unsigned, .c = lex.constant}};
-    case LEX_ConstantLongLong:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = LongLong, .c = lex.constant}};
-    case LEX_ConstantLong:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = Long, .c = lex.constant}};
-    case LEX_ConstantBitPrecise:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = BitPrecise, .c = lex.constant}};
-    case LEX_Constant:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = Int, .c = lex.constant}};
-    case LEX_ConstantFloat:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = Float, .c = lex.constant}};
-    case LEX_ConstantDouble:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = Double, .c = lex.constant}};
-    case LEX_ConstantLongDouble:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = LongDouble, .c = lex.constant}};
-    case LEX_ConstantDecimal32:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = Decimal32, .c = lex.constant}};
-    case LEX_ConstantDecimal64:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = Decimal64, .c = lex.constant}};
-    case LEX_ConstantDecimal128:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = Decimal128, .c = lex.constant}};
-    case LEX_ConstantChar:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = Char, .c = lex.constant}};
-    case LEX_ConstantCharU8:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = CharU8, .c = lex.constant}};
-    case LEX_ConstantCharU16:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = CharU16, .c = lex.constant}};
-    case LEX_ConstantCharU32:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = CharU32, .c = lex.constant}};
-    case LEX_ConstantCharWide:
-        return (Ast){.type = AST_Constant,
-                     .span = lex.span,
-                     .constant = {.type = CharWide, .c = lex.constant}};
+            .constant = {.type = UnsignedLongLong +
+                                 (lex.type - LEX_ConstantUnsignedLongLong),
+                         .c = lex.constant}};
     default:
         return (Ast){.type = AST_Invalid,
                      .span = lex.span,

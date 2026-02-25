@@ -1,3 +1,6 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #ifndef PARSER_H_
 #define PARSER_H_
 
@@ -9,7 +12,7 @@ typedef Vector Tree;     // Asts
 typedef Vector IdxStack; // Stack of Idx to Ctx
 
 enum ast_type {
-    AST_Invalid,
+    AST_Invalid = 0,
     AST_Eof,
     AST_Identifier,
     AST_Constant,
@@ -19,13 +22,13 @@ enum ast_type {
 };
 
 enum num_type {
-    UnsignedBitPrecise,
-    UnsignedLongLong,
+    UnsignedLongLong = 0,
     UnsignedLong,
+    UnsignedBitPrecise,
     Unsigned,
-    BitPrecise,
     LongLong,
     Long,
+    BitPrecise,
     Int,
     Float,
     Double,
@@ -40,7 +43,7 @@ enum num_type {
     CharWide,
 };
 
-enum str_type { ASCII, U8, U16, U32, Wide };
+enum str_type { ASCII = 0, U8, U16, U32, Wide };
 
 enum inv_type {
     BadPrimaryExpression,
@@ -48,7 +51,7 @@ enum inv_type {
 };
 
 enum assign_op {
-    Assign,
+    Assign = 0,
     AssignMul,
     AssignDiv,
     AssignMod,
