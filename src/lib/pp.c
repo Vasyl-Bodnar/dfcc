@@ -472,7 +472,14 @@ Lex include_macro(Preprocessor *pp, IncludeResource partial, Ids **id_table) {
 
     insert_include_macro(pp, &partial);
 
-    return pp_lex_next(pp, id_table);
+    Lex lex = lex_next_top(pp, id_table);
+    if (lex.type == LEX_Identifier && lex.id != partial.mid) {
+        IncludeResource another = scan_macros(pp, lex.id, id_table);
+        if (another.type != InvalidInclude) {
+            return include_macro(pp, another, id_table);
+        }
+    }
+    return lex;
 }
 
 Lex include_file(Preprocessor *pp, String *path, Ids **id_table) {
@@ -619,7 +626,7 @@ Preprocessor *create_pp() {
 }
 
 void print_pp(Preprocessor *pp) {
-    printf("(Preprocessor: macro-if-depth: %zu\n", pp->macro_if_depth);
+    printf("(PREPROCESSOR: macro-if-depth: %zu\n", pp->macro_if_depth);
     printf("include-stack:\n");
     print_incl_stack(pp->incl_stack);
     printf("include-table:\n");
