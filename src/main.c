@@ -1,10 +1,9 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
    License, v. 2.0. If a copy of the MPL was not distributed with this
    file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-#include "lib/pp.h"
+#include "lib/parser.h"
 #include <limits.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <sys/stat.h>
 
 int main(int argc, char *argv[]) {
@@ -14,22 +13,20 @@ int main(int argc, char *argv[]) {
     }
     String *path = from_cstr(argv[1]);
 
-    Lexes *lexes = create_lexes(32);
-    Preprocessor *pp = create_pp();
+    Tree *tree = create_tree(32);
+    Parser *parser = create_parser(path);
 
-    Lex lex = include_file(pp, path);
-    push_elem_vec(&lexes, &lex);
-
+    Ast ast;
     do {
-        lex = pp_lex_next(pp);
-        push_elem_vec(&lexes, &lex);
-    } while (lex.type != LEX_Eof);
+        ast = parse(parser);
+        push_elem_vec(&tree, &ast);
+    } while (ast.type != AST_Eof);
 
-    print_lexes(lexes);
-    print_pp(pp);
+    print_tree(tree);
+    print_parser(parser);
 
-    free(lexes);
-    delete_pp(pp);
+    delete_tree(tree);
+    delete_parser(parser);
 
     return 0;
 }

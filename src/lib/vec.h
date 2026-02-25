@@ -32,6 +32,9 @@ void *at_elem_vec(Vector *v, size_t idx);
 // Unchecked memcpy, must contain the elem at idx
 void get_elem_vec(Vector *v, size_t idx, void *value);
 
+// Set length to 0, meant for reuse.
+void reset_vec(Vector *v);
+
 void delete_vec(Vector *v);
 
 // String Vector Type

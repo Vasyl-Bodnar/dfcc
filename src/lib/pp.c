@@ -13,30 +13,7 @@
 
 Lex lex_next_top_expand(Preprocessor *pp);
 IncludeResource *get_top_resc(Preprocessor *pp);
-
-Args *create_args(size_t capacity) {
-    return create_vec(capacity, sizeof(Lexes *));
-}
-
-void delete_args(Args *args) {
-    for (size_t j = 0; j < args->length; j++) {
-        delete_vec(*(Lexes **)at_elem_vec(args, j));
-    }
-    delete_vec(args);
-}
-
-IdsRef *create_idsref(size_t capacity) {
-    return create_vec(capacity, sizeof(size_t));
-}
-
-// Free DefineMacro's members
-void clean_macro(void *define_macro) {
-    DefineMacro *macro = define_macro;
-    if (macro->args)
-        free(macro->args);
-    if (macro->lexes)
-        free(macro->lexes);
-}
+Lex include_macro(Preprocessor *pp, IncludeResource partial);
 
 Lex macro_include_file(Preprocessor *pp) {
     IncludeResource *top = get_top_resc(pp);
@@ -81,7 +58,12 @@ Lex macro_include_file(Preprocessor *pp) {
 
         String *file_path = from_cstr(path);
 
-        return include_file(pp, file_path);
+        if (include_file(pp, file_path)) {
+            return (Lex){.type = LEX_Invalid,
+                         .invalid = ExpectedValidIncludeFile};
+        } else {
+            return pp_lex_next(pp);
+        }
     } else if (lex.type == LEX_String) {
         char path[PATH_MAX];
         Span str = *(Span *)at_elem_vec(pp->id_table, lex.id);
@@ -97,7 +79,12 @@ Lex macro_include_file(Preprocessor *pp) {
 
         String *file_path = from_cstr(path);
 
-        return include_file(pp, file_path);
+        if (include_file(pp, file_path)) {
+            return (Lex){.type = LEX_Invalid,
+                         .invalid = ExpectedValidIncludeFile};
+        } else {
+            return pp_lex_next(pp);
+        }
     } else {
         return (Lex){.type = LEX_Invalid,
                      .span = lex.span,
@@ -479,7 +466,7 @@ Lex include_macro(Preprocessor *pp, IncludeResource partial) {
     return lex;
 }
 
-Lex include_file(Preprocessor *pp, String *path) {
+int include_file(Preprocessor *pp, String *path) {
     // If already present and unused, we don't need to allocate again
     for (size_t i = 0; i < pp->incl_table->length; i++) {
         IncludeResource *resc = at_elem_vec(pp->incl_table, i);
@@ -487,7 +474,7 @@ Lex include_file(Preprocessor *pp, String *path) {
             resc->path->length == path->length &&
             !memcmp(resc->path->s, path->s, resc->path->length)) {
             push_elem_vec(&pp->incl_stack, &i);
-            return pp_lex_next(pp);
+            return 0;
         }
     }
 
@@ -495,7 +482,7 @@ Lex include_file(Preprocessor *pp, String *path) {
     if (!file) {
         printf("File \"%.*s\" could not be found\n", (int)path->length,
                path->s);
-        return (Lex){.type = LEX_Invalid, .invalid = ExpectedValidIncludeFile};
+        return 1;
     }
 
     struct stat st_buf;
@@ -507,7 +494,7 @@ Lex include_file(Preprocessor *pp, String *path) {
 
     if (bytes == 0) {
         free(buf);
-        return (Lex){.type = LEX_Invalid, .invalid = ExpectedValidIncludeFile};
+        return 1;
     }
 
     if (buf[bytes - 1] != '\\') {
@@ -515,7 +502,7 @@ Lex include_file(Preprocessor *pp, String *path) {
     } else {
         puts("Last character cannot be '\\'");
         free(buf);
-        return (Lex){.type = LEX_Invalid, .invalid = ExpectedValidIncludeFile};
+        return 1;
     }
 
     push_elem_vec(&pp->incl_table, &(IncludeResource){
@@ -532,7 +519,7 @@ Lex include_file(Preprocessor *pp, String *path) {
     size_t id = pp->incl_table->length - 1;
     push_elem_vec(&pp->incl_stack, &id);
 
-    return pp_lex_next(pp);
+    return 0;
 }
 
 // NOTE: Careful when relying on top.
@@ -611,6 +598,30 @@ void print_incl_stack(IncludeStack *incl_stack) {
         size_t *id = at_elem_vec(incl_stack, i);
         printf("(include-idx: %zu)\n", *id);
     }
+}
+
+Args *create_args(size_t capacity) {
+    return create_vec(capacity, sizeof(Lexes *));
+}
+
+void delete_args(Args *args) {
+    for (size_t j = 0; j < args->length; j++) {
+        delete_vec(*(Lexes **)at_elem_vec(args, j));
+    }
+    delete_vec(args);
+}
+
+IdsRef *create_idsref(size_t capacity) {
+    return create_vec(capacity, sizeof(size_t));
+}
+
+// Free DefineMacro's members
+void clean_macro(void *define_macro) {
+    DefineMacro *macro = define_macro;
+    if (macro->args)
+        free(macro->args);
+    if (macro->lexes)
+        free(macro->lexes);
 }
 
 Preprocessor *create_pp() {

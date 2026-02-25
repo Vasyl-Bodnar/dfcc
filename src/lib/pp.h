@@ -79,11 +79,16 @@ typedef struct Preprocessor {
 
 Lex pp_lex_next(Preprocessor *pp);
 
-Lex include_file(Preprocessor *pp, String *path);
-Lex include_macro(Preprocessor *pp, IncludeResource partial);
+int include_file(Preprocessor *pp, String *path);
 
 Preprocessor *create_pp();
 void print_pp(Preprocessor *pp);
 void delete_pp(Preprocessor *pp);
+
+IdsRef *create_idsref(size_t capacity);
+Args *create_args(size_t capacity);
+void delete_args(Args *args);
+
+void clean_macro(void *define_macro);
 
 #endif // PP_H

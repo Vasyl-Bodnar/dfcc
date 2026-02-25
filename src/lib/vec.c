@@ -51,6 +51,8 @@ void get_elem_vec(Vector *v, size_t idx, void *value) {
     memcpy(value, v->v + idx, v->value_size);
 }
 
+void reset_vec(Vector *v) { v->length = 0; }
+
 void delete_vec(Vector *v) { free(v); }
 
 // String
