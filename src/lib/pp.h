@@ -72,14 +72,15 @@ typedef struct Preprocessor {
     Includes *incl_table;
     IncludeStack *incl_stack;
     Macros *macro_table;
+    Ids *id_table;
     size_t macro_if_depth;
     int disabled_if; // Inside non-taken branch
 } Preprocessor;
 
-Lex pp_lex_next(Preprocessor *pp, Ids **id_table);
+Lex pp_lex_next(Preprocessor *pp);
 
-Lex include_file(Preprocessor *pp, String *path, Ids **id_table);
-Lex include_macro(Preprocessor *pp, IncludeResource partial, Ids **id_table);
+Lex include_file(Preprocessor *pp, String *path);
+Lex include_macro(Preprocessor *pp, IncludeResource partial);
 
 Preprocessor *create_pp();
 void print_pp(Preprocessor *pp);

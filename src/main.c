@@ -12,26 +12,23 @@ int main(int argc, char *argv[]) {
         puts("Expected a file as input");
         return 1;
     }
+    String *path = from_cstr(argv[1]);
 
     Lexes *lexes = create_lexes(32);
-    Ids *ids = create_ids(16);
     Preprocessor *pp = create_pp();
 
-    String *path = from_cstr(argv[1]);
-    Lex lex = include_file(pp, path, &ids);
+    Lex lex = include_file(pp, path);
     push_elem_vec(&lexes, &lex);
 
     do {
-        lex = pp_lex_next(pp, &ids);
+        lex = pp_lex_next(pp);
         push_elem_vec(&lexes, &lex);
     } while (lex.type != LEX_Eof);
 
     print_lexes(lexes);
-    print_ids(ids);
     print_pp(pp);
 
     free(lexes);
-    free(ids);
     delete_pp(pp);
 
     return 0;
