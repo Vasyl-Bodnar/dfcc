@@ -7,7 +7,10 @@
 #include "vec.h"
 #include <stdio.h>
 
-Lex parse_next(Parser *parser) {
+Ast expression(Parser *parser);
+Ast assignment_expression(Parser *parser);
+
+Lex next(Parser *parser) {
     if (parser->idx >= parser->ctx->length) {
         Lex lex = pp_lex_next(&parser->pp);
         push_elem_vec(&parser->ctx, &lex);
@@ -55,7 +58,7 @@ void erase_ctx(Parser *parser) {
 // NOTE: We use the assumption that Strings and Constants are in a row
 // Could be forced if we use X macros, but currently this works
 Ast primary_expression(Parser *parser) {
-    Lex lex = parse_next(parser);
+    Lex lex = next(parser);
     switch (lex.type) {
     case LEX_Eof:
         return (Ast){
@@ -105,17 +108,49 @@ Ast primary_expression(Parser *parser) {
     default:
         return (Ast){.type = AST_Invalid,
                      .span = lex.span,
-                     .invalid = {.type = BadPrimaryExpression}};
+                     .invalid = BadPrimaryExpression};
     }
 }
 
+Ast unary_expression(Parser *parser) { return primary_expression(parser); }
+Ast logor_expression(Parser *parser) { return primary_expression(parser); }
+
 Ast conditional_expression(Parser *parser) {
-    return primary_expression(parser);
+    Ast ast = logor_expression(parser);
+    if (ast.type == AST_Eof) {
+        return ast;
+    }
+
+    save_ctx(parser);
+    Lex lex = next(parser);
+    if (lex.type == LEX_Question) {
+        erase_ctx(parser);
+        Tree *tree = create_tree(3);
+        push_elem_vec(&tree, &ast);
+
+        ast = expression(parser);
+        push_elem_vec(&tree, &ast);
+
+        save_ctx(parser);
+        Lex lex = next(parser);
+        if (lex.type == LEX_Colon) {
+            ast = conditional_expression(parser);
+            push_elem_vec(&tree, &ast);
+
+            erase_ctx(parser);
+            return (Ast){.type = AST_CondExpr, .span = lex.span, .expr = tree};
+        } else {
+            erase_ctx(parser);
+            return (Ast){.type = AST_Invalid,
+                         .span = lex.span,
+                         .invalid = BadConditionalExpression};
+        }
+    }
+    return_ctx(parser);
+    return ast;
 }
 
-Ast unary_expression(Parser *parser) { return primary_expression(parser); }
-
-Ast asssignment_expression(Parser *parser) {
+Ast assignment_expression(Parser *parser) {
     save_ctx(parser);
     Ast ast = unary_expression(parser);
     if (ast.type == AST_Eof) {
@@ -123,40 +158,20 @@ Ast asssignment_expression(Parser *parser) {
     }
 
     enum assign_op op;
-    Lex lex = parse_next(parser);
+    Lex lex = next(parser);
     switch (lex.type) {
     case LEX_Equal:
-        op = Assign;
-        break;
     case LEX_StarEqual:
-        op = AssignMul;
-        break;
     case LEX_SlashEqual:
-        op = AssignDiv;
-        break;
     case LEX_PercentEqual:
-        op = AssignMod;
-        break;
     case LEX_PlusEqual:
-        op = AssignAdd;
-        break;
     case LEX_MinusEqual:
-        op = AssignSub;
-        break;
     case LEX_LeftLeftEqual:
-        op = AssignLShift;
-        break;
     case LEX_RightRightEqual:
-        op = AssignRShift;
-        break;
     case LEX_EtEqual:
-        op = AssignAnd;
-        break;
     case LEX_CaretEqual:
-        op = AssignXor;
-        break;
     case LEX_PipeEqual:
-        op = AssignOr;
+        op = Assign + (lex.type - LEX_Equal);
         break;
     default:
         return_ctx(parser);
@@ -164,7 +179,7 @@ Ast asssignment_expression(Parser *parser) {
     }
     Tree *tree = create_tree(2);
     push_elem_vec(&tree, &ast);
-    ast = asssignment_expression(parser);
+    ast = assignment_expression(parser);
     push_elem_vec(&tree, &ast);
 
     erase_ctx(parser);
@@ -174,19 +189,18 @@ Ast asssignment_expression(Parser *parser) {
 }
 
 Ast expression(Parser *parser) {
-    Ast ast = asssignment_expression(parser);
+    Ast ast = assignment_expression(parser);
     save_ctx(parser);
-    Lex lex = parse_next(parser);
-    switch (lex.type) {
-    case LEX_Comma: {
+    Lex lex = next(parser);
+    if (lex.type == LEX_Comma) {
         erase_ctx(parser);
         Tree *assignments = create_tree(2);
         push_elem_vec(&assignments, &ast);
         while (1) {
-            Ast ast = asssignment_expression(parser);
+            Ast ast = assignment_expression(parser);
             push_elem_vec(&assignments, &ast);
             save_ctx(parser);
-            Lex lex = parse_next(parser);
+            Lex lex = next(parser);
             if (lex.type != LEX_Comma) {
                 return_ctx(parser);
                 return (Ast){
@@ -195,10 +209,8 @@ Ast expression(Parser *parser) {
             erase_ctx(parser);
         }
     }
-    default:
-        return_ctx(parser);
-        return ast;
-    }
+    return_ctx(parser);
+    return ast;
 }
 
 Ast parse(Parser *parser) {
@@ -270,7 +282,7 @@ void print_tree(Tree *tree) {
         Ast ast = *(Ast *)at_elem_vec((Tree *)tree, i);
         switch (ast.type) {
         case AST_Invalid:
-            printf(":Ast Error %d: [%p, %zu, %zu, %zu]\n", ast.invalid.type,
+            printf(":Ast Error %d: [%p, %zu, %zu, %zu]\n", ast.invalid,
                    ast.span.start, ast.span.len, ast.span.row, ast.span.col);
             break;
         case AST_Eof:
@@ -301,6 +313,12 @@ void print_tree(Tree *tree) {
             printf(":AssignExpr %d: [%p, %zu, %zu, %zu] ::\n", ast.assign.op,
                    ast.span.start, ast.span.len, ast.span.row, ast.span.col);
             print_tree(ast.assign.assigns);
+            printf("::\n");
+            break;
+        case AST_CondExpr:
+            printf(":CondExpr: [%p, %zu, %zu, %zu] ::\n", ast.span.start,
+                   ast.span.len, ast.span.row, ast.span.col);
+            print_tree(ast.expr);
             printf("::\n");
             break;
         }

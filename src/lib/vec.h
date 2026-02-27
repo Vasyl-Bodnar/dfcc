@@ -8,6 +8,8 @@
 #include <stdlib.h>
 
 // Generic Vector Type
+// We could use some different/nicer interfaces
+// However this is good enough
 typedef struct Vector {
     size_t value_size;
     size_t length;

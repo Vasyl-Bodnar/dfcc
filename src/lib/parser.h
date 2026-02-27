@@ -19,6 +19,7 @@ enum ast_type {
     AST_String,
     AST_Expr,
     AST_AssignExpr,
+    AST_CondExpr,
 };
 
 enum num_type {
@@ -48,6 +49,7 @@ enum str_type { ASCII = 0, U8, U16, U32, Wide };
 enum inv_type {
     BadPrimaryExpression,
     BadExpression,
+    BadConditionalExpression,
 };
 
 enum assign_op {
@@ -70,9 +72,7 @@ typedef struct Ast {
     union {
         Tree *expr;
         size_t id;
-        struct {
-            enum inv_type type;
-        } invalid;
+        enum inv_type invalid;
         struct {
             enum str_type type;
             size_t id;
