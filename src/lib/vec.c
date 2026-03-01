@@ -43,6 +43,12 @@ void *peek_elem_vec(Vector *v) {
 
 void pop_elem_vec(Vector *v) { v->length -= 1; }
 
+void delete_slice_vec(Vector *v, size_t from, size_t to) {
+    memmove(v->v + v->value_size * from, v->v + v->value_size * to,
+            v->length - to);
+    v->length -= to - from;
+}
+
 void *at_elem_vec(Vector *v, size_t idx) {
     return (void *)(v->v + v->value_size * idx);
 }

@@ -10,6 +10,8 @@
 Ast expression(Parser *parser);
 Ast assignment_expression(Parser *parser);
 
+// Using a buffer and a stack of save points to backtrack
+// Consider packrat as an optimization
 Lex next(Parser *parser) {
     if (parser->idx >= parser->ctx->length) {
         Lex lex = pp_lex_next(&parser->pp);
@@ -33,12 +35,12 @@ void reset_ctx(Parser *parser) {
 
 void return_ctx(Parser *parser) {
     if (!parser->idx_stack->length) {
+        parser->idx = 0;
         return;
     }
 
     size_t idx = *(size_t *)peek_elem_vec(parser->idx_stack);
     pop_elem_vec(parser->idx_stack);
-    parser->ctx->length = parser->idx;
     parser->idx = idx;
 }
 
@@ -48,9 +50,7 @@ void erase_ctx(Parser *parser) {
     }
 
     size_t idx = *(size_t *)peek_elem_vec(parser->idx_stack);
-    for (size_t i = 0; i < parser->idx - idx; i++) {
-        pop_elem_vec(parser->ctx);
-    }
+    delete_slice_vec(parser->ctx, idx, parser->idx);
     pop_elem_vec(parser->idx_stack);
     parser->idx = idx;
 }
@@ -124,14 +124,12 @@ Ast conditional_expression(Parser *parser) {
     save_ctx(parser);
     Lex lex = next(parser);
     if (lex.type == LEX_Question) {
-        erase_ctx(parser);
         Tree *tree = create_tree(3);
         push_elem_vec(&tree, &ast);
 
         ast = expression(parser);
         push_elem_vec(&tree, &ast);
 
-        save_ctx(parser);
         Lex lex = next(parser);
         if (lex.type == LEX_Colon) {
             ast = conditional_expression(parser);

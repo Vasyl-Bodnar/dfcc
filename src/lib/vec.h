@@ -28,6 +28,10 @@ void *peek_elem_vec(Vector *v);
 // Unchecked pop, must contain more than 0 elements
 void pop_elem_vec(Vector *v);
 
+// Unchecked delete_slice, must be a valid subslice
+// Moves data above this slice below
+void delete_slice_vec(Vector *v, size_t from, size_t to);
+
 // Unchecked at, returns the address, must contain the elem at idx
 void *at_elem_vec(Vector *v, size_t idx);
 
