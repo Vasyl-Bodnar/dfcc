@@ -113,7 +113,148 @@ Ast primary_expression(Parser *parser) {
 }
 
 Ast unary_expression(Parser *parser) { return primary_expression(parser); }
-Ast logor_expression(Parser *parser) { return primary_expression(parser); }
+Ast equal_expression(Parser *parser) { return primary_expression(parser); }
+
+// NOTE: We just duplicate these rules.
+// They are very near identical, so it is possible to macro them.
+// However, it is not necessary, for now.
+Ast and_expression(Parser *parser) {
+    Ast ast = equal_expression(parser);
+    if (ast.type == AST_Eof) {
+        return ast;
+    }
+
+    save_ctx(parser);
+    Lex lex = next(parser);
+    if (lex.type == LEX_Et) {
+        Tree *tree = create_tree(2);
+        push_elem_vec(&tree, &ast);
+
+        do {
+            erase_ctx(parser);
+            ast = equal_expression(parser);
+            push_elem_vec(&tree, &ast);
+            save_ctx(parser);
+            lex = next(parser);
+        } while (lex.type == LEX_Et);
+
+        return_ctx(parser);
+        return (Ast){.type = AST_AndExpr, .span = lex.span, .expr = tree};
+    }
+
+    return_ctx(parser);
+    return ast;
+}
+Ast exclor_expression(Parser *parser) {
+    Ast ast = and_expression(parser);
+    if (ast.type == AST_Eof) {
+        return ast;
+    }
+
+    save_ctx(parser);
+    Lex lex = next(parser);
+    if (lex.type == LEX_Caret) {
+        Tree *tree = create_tree(2);
+        push_elem_vec(&tree, &ast);
+
+        do {
+            erase_ctx(parser);
+            ast = and_expression(parser);
+            push_elem_vec(&tree, &ast);
+            save_ctx(parser);
+            lex = next(parser);
+        } while (lex.type == LEX_Caret);
+
+        return_ctx(parser);
+        return (Ast){.type = AST_ExclOrExpr, .span = lex.span, .expr = tree};
+    }
+
+    return_ctx(parser);
+    return ast;
+}
+Ast inclor_expression(Parser *parser) {
+    Ast ast = exclor_expression(parser);
+    if (ast.type == AST_Eof) {
+        return ast;
+    }
+
+    save_ctx(parser);
+    Lex lex = next(parser);
+    if (lex.type == LEX_Pipe) {
+        Tree *tree = create_tree(2);
+        push_elem_vec(&tree, &ast);
+
+        do {
+            erase_ctx(parser);
+            ast = exclor_expression(parser);
+            push_elem_vec(&tree, &ast);
+            save_ctx(parser);
+            lex = next(parser);
+        } while (lex.type == LEX_Pipe);
+
+        return_ctx(parser);
+        return (Ast){.type = AST_InclOrExpr, .span = lex.span, .expr = tree};
+    }
+
+    return_ctx(parser);
+    return ast;
+}
+
+Ast logand_expression(Parser *parser) {
+    Ast ast = inclor_expression(parser);
+    if (ast.type == AST_Eof) {
+        return ast;
+    }
+
+    save_ctx(parser);
+    Lex lex = next(parser);
+    if (lex.type == LEX_EtEt) {
+        Tree *tree = create_tree(2);
+        push_elem_vec(&tree, &ast);
+
+        do {
+            erase_ctx(parser);
+            ast = inclor_expression(parser);
+            push_elem_vec(&tree, &ast);
+            save_ctx(parser);
+            lex = next(parser);
+        } while (lex.type == LEX_EtEt);
+
+        return_ctx(parser);
+        return (Ast){.type = AST_LogAndExpr, .span = lex.span, .expr = tree};
+    }
+
+    return_ctx(parser);
+    return ast;
+}
+
+Ast logor_expression(Parser *parser) {
+    Ast ast = logand_expression(parser);
+    if (ast.type == AST_Eof) {
+        return ast;
+    }
+
+    save_ctx(parser);
+    Lex lex = next(parser);
+    if (lex.type == LEX_PipePipe) {
+        Tree *tree = create_tree(2);
+        push_elem_vec(&tree, &ast);
+
+        do {
+            erase_ctx(parser);
+            ast = logand_expression(parser);
+            push_elem_vec(&tree, &ast);
+            save_ctx(parser);
+            lex = next(parser);
+        } while (lex.type == LEX_PipePipe);
+
+        return_ctx(parser);
+        return (Ast){.type = AST_LogOrExpr, .span = lex.span, .expr = tree};
+    }
+
+    return_ctx(parser);
+    return ast;
+}
 
 Ast conditional_expression(Parser *parser) {
     Ast ast = logor_expression(parser);
@@ -315,6 +456,36 @@ void print_tree(Tree *tree) {
             break;
         case AST_CondExpr:
             printf(":CondExpr: [%p, %zu, %zu, %zu] ::\n", ast.span.start,
+                   ast.span.len, ast.span.row, ast.span.col);
+            print_tree(ast.expr);
+            printf("::\n");
+            break;
+        case AST_LogOrExpr:
+            printf(":LogOrExpr: [%p, %zu, %zu, %zu] ::\n", ast.span.start,
+                   ast.span.len, ast.span.row, ast.span.col);
+            print_tree(ast.expr);
+            printf("::\n");
+            break;
+        case AST_LogAndExpr:
+            printf(":LogAndExpr: [%p, %zu, %zu, %zu] ::\n", ast.span.start,
+                   ast.span.len, ast.span.row, ast.span.col);
+            print_tree(ast.expr);
+            printf("::\n");
+            break;
+        case AST_InclOrExpr:
+            printf(":InclOrExpr: [%p, %zu, %zu, %zu] ::\n", ast.span.start,
+                   ast.span.len, ast.span.row, ast.span.col);
+            print_tree(ast.expr);
+            printf("::\n");
+            break;
+        case AST_ExclOrExpr:
+            printf(":ExclOrExpr: [%p, %zu, %zu, %zu] ::\n", ast.span.start,
+                   ast.span.len, ast.span.row, ast.span.col);
+            print_tree(ast.expr);
+            printf("::\n");
+            break;
+        case AST_AndExpr:
+            printf(":AndExpr: [%p, %zu, %zu, %zu] ::\n", ast.span.start,
                    ast.span.len, ast.span.row, ast.span.col);
             print_tree(ast.expr);
             printf("::\n");

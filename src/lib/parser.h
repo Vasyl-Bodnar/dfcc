@@ -20,6 +20,11 @@ enum ast_type {
     AST_Expr,
     AST_AssignExpr,
     AST_CondExpr,
+    AST_LogOrExpr,
+    AST_LogAndExpr,
+    AST_InclOrExpr,
+    AST_ExclOrExpr,
+    AST_AndExpr,
 };
 
 enum num_type {
@@ -70,7 +75,7 @@ typedef struct Ast {
     enum ast_type type;
     Span span;
     union {
-        Tree *expr;
+        Tree *expr; // General option, contents depend on type
         size_t id;
         enum inv_type invalid;
         struct {
