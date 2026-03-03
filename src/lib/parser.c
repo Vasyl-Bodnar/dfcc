@@ -305,10 +305,10 @@ Ast conditional_expression(Parser *parser) {
             ast = conditional_expression(parser);
             push_elem_vec(&tree, &ast);
 
-            erase_ctx(parser);
+            ignore_ctx(parser);
             return (Ast){.type = AST_CondExpr, .span = lex.span, .expr = tree};
         } else {
-            erase_ctx(parser);
+            ignore_ctx(parser);
             return (Ast){.type = AST_Invalid,
                          .span = lex.span,
                          .invalid = BadConditionalExpression};
@@ -351,7 +351,7 @@ Ast assignment_expression(Parser *parser) {
     ast = assignment_expression(parser);
     push_elem_vec(&tree, &ast);
 
-    erase_ctx(parser);
+    ignore_ctx(parser);
     return (Ast){.type = AST_AssignExpr,
                  .span = lex.span,
                  .assign = {.assigns = tree, .op = op}};
@@ -362,7 +362,7 @@ Ast expression(Parser *parser) {
     save_ctx(parser);
     Lex lex = next(parser);
     if (lex.type == LEX_Comma) {
-        erase_ctx(parser);
+        ignore_ctx(parser);
         Tree *assignments = create_tree(2);
         push_elem_vec(&assignments, &ast);
         while (1) {
@@ -375,7 +375,7 @@ Ast expression(Parser *parser) {
                 return (Ast){
                     .type = AST_Expr, .span = lex.span, .expr = assignments};
             }
-            erase_ctx(parser);
+            ignore_ctx(parser);
         }
     }
     return_ctx(parser);
