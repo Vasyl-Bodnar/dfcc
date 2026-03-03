@@ -11,6 +11,8 @@
 typedef Vector Tree;     // Asts
 typedef Vector IdxStack; // Stack of Idx to Ctx
 
+// Note that while some operations like AST_AndExpr operate on flat lists
+// Operations like AST_Equal are binary only
 enum ast_type {
     AST_Invalid = 0,
     AST_Eof,
@@ -25,6 +27,8 @@ enum ast_type {
     AST_InclOrExpr,
     AST_ExclOrExpr,
     AST_AndExpr,
+    AST_EqualExpr,
+    AST_NotEqualExpr,
 };
 
 enum num_type {
@@ -114,7 +118,7 @@ void print_parser(Parser *parser);
 void delete_parser(Parser *parser);
 
 Tree *create_tree(size_t capacity);
-void print_tree(Tree *tree);
+void print_tree(Tree *tree, int depth);
 void delete_tree(Tree *tree);
 
 #endif // PARSER_H_

@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
         push_elem_vec(&tree, &ast);
     } while (ast.type != AST_Eof);
 
-    print_tree(tree);
+    print_tree(tree, 0);
     print_parser(parser);
 
     delete_tree(tree);

@@ -644,7 +644,7 @@ void print_pp(Preprocessor *pp) {
     print_macro_table(pp->macro_table);
     printf("id-table:\n");
     print_ids(pp->id_table);
-    printf(")\n");
+    printf(")");
 }
 
 // TODO: This might not free properly
