@@ -33,6 +33,10 @@ enum ast_type {
     AST_GreaterExpr,
     AST_LessEqExpr,
     AST_GreaterEqExpr,
+    AST_ShiftLeftExpr,
+    AST_ShiftRightExpr,
+    AST_AddExpr,
+    AST_SubExpr,
 };
 
 enum num_type {

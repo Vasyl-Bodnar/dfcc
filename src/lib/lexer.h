@@ -8,6 +8,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// NOTE: Order is important.
+// It is used to make parts of parsing nicer e.g.
+// The different number types are in identical order in the parser and lexer.
 enum lex_type {
     LEX_Invalid = 0,
     LEX_Eof,
