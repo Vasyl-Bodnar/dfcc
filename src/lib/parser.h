@@ -29,6 +29,10 @@ enum ast_type {
     AST_AndExpr,
     AST_EqualExpr,
     AST_NotEqualExpr,
+    AST_LessExpr,
+    AST_GreaterExpr,
+    AST_LessEqExpr,
+    AST_GreaterEqExpr,
 };
 
 enum num_type {

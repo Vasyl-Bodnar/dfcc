@@ -136,7 +136,35 @@ Ast primary_expression(Parser *parser) {
 }
 
 Ast unary_expression(Parser *parser) { return primary_expression(parser); }
-Ast rel_expression(Parser *parser) { return primary_expression(parser); }
+Ast shift_expression(Parser *parser) { return primary_expression(parser); }
+
+Ast rel_expression(Parser *parser) {
+    Ast ast = shift_expression(parser);
+    if (ast.type == AST_Eof) {
+        return ast;
+    }
+
+    save_ctx(parser);
+    Lex lex = next(parser);
+    while (lex.type == LEX_Left || lex.type == LEX_Right ||
+           lex.type == LEX_LeftEqual || lex.type == LEX_RightEqual) {
+        Tree *tree = create_tree(2);
+        push_elem_vec(&tree, &ast);
+
+        ast = (Ast){.type = AST_LessExpr + (lex.type - LEX_Left),
+                    .span = lex.span,
+                    .expr = tree};
+
+        ignore_ctx(parser);
+        Ast right = shift_expression(parser);
+        push_elem_vec(&ast.expr, &right);
+        save_ctx(parser);
+        lex = next(parser);
+    }
+
+    return_ctx(parser);
+    return ast;
+}
 
 Ast equal_expression(Parser *parser) {
     Ast ast = rel_expression(parser);
@@ -582,6 +610,34 @@ void print_ast(Ast ast, int depth) {
         break;
     case AST_NotEqualExpr:
         printf("%*c:NotEqualExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_LessExpr:
+        printf("%*c:LessExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_GreaterExpr:
+        printf("%*c:GreaterExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_LessEqExpr:
+        printf("%*c:LessEqExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_GreaterEqExpr:
+        printf("%*c:GreaterEqExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
         print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
         print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
