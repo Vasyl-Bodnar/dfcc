@@ -53,6 +53,7 @@ enum str_type { ASCII = 0, U8, U16, U32, Wide };
 
 enum inv_type {
     BadPrimaryExpression,
+    BadPrimaryExpressionRParen,
     BadExpression,
     BadConditionalExpression,
 };
@@ -71,6 +72,8 @@ enum assign_op {
     AssignOr
 };
 
+// Consider using a flat array and indexes for Ast
+// Better performance, easier to free, etc.
 typedef struct Ast {
     enum ast_type type;
     Span span;

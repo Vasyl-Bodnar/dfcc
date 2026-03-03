@@ -55,8 +55,20 @@ void erase_ctx(Parser *parser) {
     parser->idx = idx;
 }
 
+void ignore_ctx(Parser *parser) {
+    if (parser->idx_stack->length) {
+        pop_elem_vec(parser->idx_stack);
+    }
+}
+
+Lex erase_next(Parser *parser) {
+    save_ctx(parser);
+    Lex lex = next(parser);
+    erase_ctx(parser);
+    return lex;
+}
+
 // NOTE: We use the assumption that Strings and Constants are in a row
-// Could be forced if we use X macros, but currently this works
 Ast primary_expression(Parser *parser) {
     Lex lex = next(parser);
     switch (lex.type) {
@@ -64,6 +76,17 @@ Ast primary_expression(Parser *parser) {
         return (Ast){
             .type = AST_Eof,
         };
+    case LEX_LParen: {
+        Ast ast = expression(parser);
+        lex = next(parser);
+        if (lex.type == LEX_RParen) {
+            return ast;
+        } else {
+            return (Ast){.type = AST_Invalid,
+                         .span = lex.span,
+                         .invalid = BadPrimaryExpressionRParen};
+        }
+    }
     case LEX_Identifier:
         return (Ast){
             .type = AST_Identifier,
@@ -118,6 +141,10 @@ Ast equal_expression(Parser *parser) { return primary_expression(parser); }
 // NOTE: We just duplicate these rules.
 // They are very near identical, so it is possible to macro them.
 // However, it is not necessary, for now.
+// TODO: I am pretty sure this produces a right-biased "tree".
+// As opposed to left-biased per the spec.
+// Whether this causes problems will be revealed later.
+// These are vectors anyhow.
 Ast and_expression(Parser *parser) {
     Ast ast = equal_expression(parser);
     if (ast.type == AST_Eof) {
@@ -131,7 +158,7 @@ Ast and_expression(Parser *parser) {
         push_elem_vec(&tree, &ast);
 
         do {
-            erase_ctx(parser);
+            ignore_ctx(parser);
             ast = equal_expression(parser);
             push_elem_vec(&tree, &ast);
             save_ctx(parser);
@@ -145,6 +172,7 @@ Ast and_expression(Parser *parser) {
     return_ctx(parser);
     return ast;
 }
+
 Ast exclor_expression(Parser *parser) {
     Ast ast = and_expression(parser);
     if (ast.type == AST_Eof) {
@@ -158,7 +186,7 @@ Ast exclor_expression(Parser *parser) {
         push_elem_vec(&tree, &ast);
 
         do {
-            erase_ctx(parser);
+            ignore_ctx(parser);
             ast = and_expression(parser);
             push_elem_vec(&tree, &ast);
             save_ctx(parser);
@@ -172,6 +200,7 @@ Ast exclor_expression(Parser *parser) {
     return_ctx(parser);
     return ast;
 }
+
 Ast inclor_expression(Parser *parser) {
     Ast ast = exclor_expression(parser);
     if (ast.type == AST_Eof) {
@@ -185,7 +214,7 @@ Ast inclor_expression(Parser *parser) {
         push_elem_vec(&tree, &ast);
 
         do {
-            erase_ctx(parser);
+            ignore_ctx(parser);
             ast = exclor_expression(parser);
             push_elem_vec(&tree, &ast);
             save_ctx(parser);
@@ -213,7 +242,7 @@ Ast logand_expression(Parser *parser) {
         push_elem_vec(&tree, &ast);
 
         do {
-            erase_ctx(parser);
+            ignore_ctx(parser);
             ast = inclor_expression(parser);
             push_elem_vec(&tree, &ast);
             save_ctx(parser);
@@ -241,7 +270,7 @@ Ast logor_expression(Parser *parser) {
         push_elem_vec(&tree, &ast);
 
         do {
-            erase_ctx(parser);
+            ignore_ctx(parser);
             ast = logand_expression(parser);
             push_elem_vec(&tree, &ast);
             save_ctx(parser);
@@ -285,6 +314,7 @@ Ast conditional_expression(Parser *parser) {
                          .invalid = BadConditionalExpression};
         }
     }
+
     return_ctx(parser);
     return ast;
 }
@@ -376,7 +406,7 @@ Parser *create_parser(String *file_path) {
 }
 
 void print_parser(Parser *parser) {
-    printf("(PARSER: idxs:\n");
+    printf("(PARSER: idx: %zu idxs:\n", parser->idx);
     for (size_t i = 0; i < parser->idx_stack->length; i++) {
         printf(" %zu\n", *(size_t *)at_elem_vec(parser->idx_stack, i));
     }
@@ -449,7 +479,7 @@ void print_tree(Tree *tree) {
             printf("::\n");
             break;
         case AST_AssignExpr:
-            printf(":AssignExpr %d: [%p, %zu, %zu, %zu] ::\n", ast.assign.op,
+            printf(":AssignExpr%d: [%p, %zu, %zu, %zu] ::\n", ast.assign.op,
                    ast.span.start, ast.span.len, ast.span.row, ast.span.col);
             print_tree(ast.assign.assigns);
             printf("::\n");
