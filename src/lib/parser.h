@@ -50,6 +50,12 @@ enum ast_type {
     AST_NotExpr,
     AST_SizeofExpr,
     AST_AlignofExpr,
+    AST_ArrAccessExpr,
+    AST_CallExpr,
+    AST_AccessExpr,
+    AST_DerefAccessExpr,
+    AST_PostIncExpr,
+    AST_PostDecExpr,
 };
 
 enum num_type {
@@ -108,8 +114,8 @@ typedef struct Ast {
         size_t id;
         enum inv_type invalid;
         struct {
-            enum str_type type;
             size_t id;
+            enum str_type type;
         } string;
         struct {
             enum num_type type;
@@ -122,6 +128,10 @@ typedef struct Ast {
             Tree *assigns; // Unary and sub AssignExpr
             enum assign_op op;
         } assign;
+        struct {
+            Tree *expr;
+            size_t id;
+        } access;
     };
 } Ast;
 

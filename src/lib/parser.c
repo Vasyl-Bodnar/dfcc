@@ -51,6 +51,7 @@ void ignore_ctx(Parser *parser) {
     }
 }
 
+// TODO: _Generic
 // NOTE: We use the assumption that Strings and Constants are in a row
 Ast primary_expression(Parser *parser) {
     Lex lex = next(parser);
@@ -118,7 +119,125 @@ Ast primary_expression(Parser *parser) {
     }
 }
 
-Ast postfix_expression(Parser *parser) { return primary_expression(parser); }
+Ast compound_literal(Parser *parser) {
+    // TODO: type parsing required
+    return primary_expression(parser);
+}
+
+Ast postfix_expression(Parser *parser) {
+    // TODO: Should be primary if not compound
+    Ast ast, value = compound_literal(parser);
+    if (value.type == AST_Eof) {
+        return value;
+    }
+
+    int flag = 1;
+    while (flag) {
+        save_ctx(parser);
+        Lex lex = next(parser);
+        switch (lex.type) {
+        case LEX_LBracket:
+            ast = (Ast){.type = AST_ArrAccessExpr,
+                        .span = lex.span,
+                        .expr = create_tree(2)};
+            push_elem_vec(&ast.expr, &value);
+            value = expression(parser);
+            push_elem_vec(&ast.expr, &value);
+
+            lex = next(parser);
+            if (lex.type == LEX_RBracket) {
+                ignore_ctx(parser);
+                value = ast;
+                break;
+            }
+            delete_tree(ast.expr);
+            return_ctx(parser);
+            flag = 0;
+            break;
+        case LEX_LParen:
+            save_ctx(parser);
+            lex = next(parser);
+            if (lex.type == LEX_RParen) {
+                ast = (Ast){.type = AST_CallExpr,
+                            .span = lex.span,
+                            .expr = create_tree(1)};
+                push_elem_vec(&ast.expr, &value);
+                ignore_ctx(parser);
+                ignore_ctx(parser);
+                value = ast;
+                break;
+            }
+
+            return_ctx(parser);
+            ast = (Ast){
+                .type = AST_CallExpr, .span = lex.span, .expr = create_tree(2)};
+            push_elem_vec(&ast.expr, &value);
+            value = expression(parser);
+            push_elem_vec(&ast.expr, &value);
+
+            lex = next(parser);
+            if (lex.type == LEX_RParen) {
+                ignore_ctx(parser);
+                value = ast;
+                break;
+            }
+            delete_tree(ast.expr);
+            return_ctx(parser);
+            flag = 0;
+            break;
+        case LEX_Dot:
+            lex = next(parser);
+            if (lex.type == LEX_Identifier) {
+                ast = (Ast){.type = AST_AccessExpr,
+                            .span = lex.span,
+                            .access = {.expr = create_tree(1), .id = lex.id}};
+                push_elem_vec(&ast.expr, &value);
+                ignore_ctx(parser);
+                value = ast;
+                break;
+            }
+            return_ctx(parser);
+            flag = 0;
+            break;
+        case LEX_Arrow:
+            lex = next(parser);
+            if (lex.type == LEX_Identifier) {
+                ast = (Ast){.type = AST_DerefAccessExpr,
+                            .span = lex.span,
+                            .access = {.expr = create_tree(1), .id = lex.id}};
+                push_elem_vec(&ast.expr, &value);
+                ignore_ctx(parser);
+                value = ast;
+                break;
+            }
+            return_ctx(parser);
+            flag = 0;
+            break;
+        case LEX_PlusPlus:
+            ast = (Ast){.type = AST_PostIncExpr,
+                        .span = lex.span,
+                        .expr = create_tree(1)};
+            push_elem_vec(&ast.expr, &value);
+            ignore_ctx(parser);
+            value = ast;
+            break;
+        case LEX_MinusMinus:
+            ast = (Ast){.type = AST_PostDecExpr,
+                        .span = lex.span,
+                        .expr = create_tree(1)};
+            push_elem_vec(&ast.expr, &value);
+            ignore_ctx(parser);
+            value = ast;
+            break;
+        default:
+            return_ctx(parser);
+            flag = 0;
+            break;
+        }
+    }
+
+    return value;
+}
 
 Ast unary_expression(Parser *parser) {
     save_ctx(parser);
@@ -918,6 +1037,44 @@ void print_ast(Ast ast, int depth) {
         break;
     case AST_AlignofExpr:
         printf("%*c:AlignofExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_ArrAccessExpr:
+        printf("%*c:ArrAccess: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_tree(ast.expr, depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_CallExpr:
+        printf("%*c:Call: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
+               ast.span.len, ast.span.row, ast.span.col);
+        print_tree(ast.expr, depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_AccessExpr:
+        printf("%*c:Access %zu: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.access.id, ast.span.start, ast.span.len, ast.span.row,
+               ast.span.col);
+        print_tree(ast.access.expr, depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_DerefAccessExpr:
+        printf("%*c:DerefAccess %zu: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.access.id, ast.span.start, ast.span.len, ast.span.row,
+               ast.span.col);
+        print_tree(ast.access.expr, depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_PostIncExpr:
+        printf("%*c:PostInc: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_PostDecExpr:
+        printf("%*c:PostDec: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
         print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
         printf("%*c::\n", depth, ' ');
