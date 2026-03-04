@@ -37,6 +37,19 @@ enum ast_type {
     AST_ShiftRightExpr,
     AST_AddExpr,
     AST_SubExpr,
+    AST_MultExpr,
+    AST_DivExpr,
+    AST_ModExpr,
+    AST_CastExpr,
+    AST_PreIncExpr,
+    AST_PreDecExpr,
+    AST_RefExpr,
+    AST_DerefExpr,
+    AST_NegExpr,
+    AST_InvExpr,
+    AST_NotExpr,
+    AST_SizeofExpr,
+    AST_AlignofExpr,
 };
 
 enum num_type {
@@ -68,6 +81,7 @@ enum inv_type {
     BadPrimaryExpressionRParen,
     BadExpression,
     BadConditionalExpression,
+    BadUnimplemented
 };
 
 enum assign_op {

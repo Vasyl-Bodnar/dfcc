@@ -9,6 +9,7 @@
 
 Ast expression(Parser *parser);
 Ast assignment_expression(Parser *parser);
+Ast cast_expression(Parser *parser);
 
 // Using a buffer and a stack of save points to backtrack
 // Consider packrat as an optimization
@@ -44,28 +45,10 @@ void return_ctx(Parser *parser) {
     parser->idx = idx;
 }
 
-void erase_ctx(Parser *parser) {
-    if (!parser->idx_stack->length) {
-        return reset_ctx(parser);
-    }
-
-    size_t idx = *(size_t *)peek_elem_vec(parser->idx_stack);
-    delete_slice_vec(parser->ctx, idx, parser->idx);
-    pop_elem_vec(parser->idx_stack);
-    parser->idx = idx;
-}
-
 void ignore_ctx(Parser *parser) {
     if (parser->idx_stack->length) {
         pop_elem_vec(parser->idx_stack);
     }
-}
-
-Lex erase_next(Parser *parser) {
-    save_ctx(parser);
-    Lex lex = next(parser);
-    erase_ctx(parser);
-    return lex;
 }
 
 // NOTE: We use the assumption that Strings and Constants are in a row
@@ -135,8 +118,139 @@ Ast primary_expression(Parser *parser) {
     }
 }
 
-Ast unary_expression(Parser *parser) { return primary_expression(parser); }
-Ast mult_expression(Parser *parser) { return primary_expression(parser); }
+Ast postfix_expression(Parser *parser) { return primary_expression(parser); }
+
+Ast unary_expression(Parser *parser) {
+    save_ctx(parser);
+    Ast ast, value;
+    Lex lex = next(parser);
+    switch (lex.type) {
+    case LEX_PlusPlus:
+        ast = (Ast){
+            .type = AST_PreIncExpr, .span = lex.span, .expr = create_tree(1)};
+        value = unary_expression(parser);
+        push_elem_vec(&ast.expr, &value);
+        ignore_ctx(parser);
+        return ast;
+    case LEX_MinusMinus:
+        ast = (Ast){
+            .type = AST_PreDecExpr, .span = lex.span, .expr = create_tree(1)};
+        value = unary_expression(parser);
+        push_elem_vec(&ast.expr, &value);
+        ignore_ctx(parser);
+        return ast;
+    case LEX_Et:
+        ast = (Ast){
+            .type = AST_RefExpr, .span = lex.span, .expr = create_tree(1)};
+        value = cast_expression(parser);
+        push_elem_vec(&ast.expr, &value);
+        ignore_ctx(parser);
+        return ast;
+    case LEX_Star:
+        ast = (Ast){
+            .type = AST_DerefExpr, .span = lex.span, .expr = create_tree(1)};
+        value = cast_expression(parser);
+        push_elem_vec(&ast.expr, &value);
+        ignore_ctx(parser);
+        return ast;
+    case LEX_Plus:
+        ignore_ctx(parser);
+        return cast_expression(parser);
+    case LEX_Minus:
+        ast = (Ast){
+            .type = AST_NegExpr, .span = lex.span, .expr = create_tree(1)};
+        value = cast_expression(parser);
+        push_elem_vec(&ast.expr, &value);
+        ignore_ctx(parser);
+        return ast;
+    case LEX_Tilde:
+        ast = (Ast){
+            .type = AST_InvExpr, .span = lex.span, .expr = create_tree(1)};
+        value = cast_expression(parser);
+        push_elem_vec(&ast.expr, &value);
+        ignore_ctx(parser);
+        return ast;
+    case LEX_Exclamation:
+        ast = (Ast){
+            .type = AST_NotExpr, .span = lex.span, .expr = create_tree(1)};
+        value = cast_expression(parser);
+        push_elem_vec(&ast.expr, &value);
+        ignore_ctx(parser);
+        return ast;
+    case LEX_Keyword:
+        if (lex.key == KEY_sizeof) {
+            // TODO: Also Parsing types
+            ast = (Ast){.type = AST_SizeofExpr,
+                        .span = lex.span,
+                        .expr = create_tree(1)};
+            value = unary_expression(parser);
+            push_elem_vec(&ast.expr, &value);
+            ignore_ctx(parser);
+            return ast;
+        } else if (lex.key == KEY_alignof) {
+            // TODO: Parsing types
+            ignore_ctx(parser);
+            return (Ast){.type = AST_Invalid,
+                         .span = lex.span,
+                         .invalid = BadUnimplemented};
+        }
+    default:
+        return_ctx(parser);
+        return postfix_expression(parser);
+    }
+}
+
+Ast cast_expression(Parser *parser) {
+    // TODO: This requires parsing types to parse properly
+    return unary_expression(parser);
+}
+
+// Another example of heavy duplication with these binary expressions
+// However, this is not important enough to bother
+Ast mult_expression(Parser *parser) {
+    Ast ast = cast_expression(parser);
+    if (ast.type == AST_Eof) {
+        return ast;
+    }
+
+    save_ctx(parser);
+    Lex lex = next(parser);
+    while (lex.type == LEX_Star || lex.type == LEX_Slash ||
+           lex.type == LEX_Percent) {
+        Tree *tree = create_tree(2);
+        push_elem_vec(&tree, &ast);
+
+        enum ast_type type = 0;
+        switch (lex.type) {
+        case LEX_Star:
+            type = AST_MultExpr;
+            break;
+        case LEX_Slash:
+            type = AST_DivExpr;
+            break;
+        case LEX_Percent:
+            type = AST_ModExpr;
+            break;
+        default:
+            // TODO: Delete tree and ast
+            // This is impossible however
+            return (Ast){.type = AST_Invalid,
+                         .span = lex.span,
+                         .invalid = BadUnimplemented};
+        }
+
+        ast = (Ast){.type = type, .span = lex.span, .expr = tree};
+
+        ignore_ctx(parser);
+        Ast right = cast_expression(parser);
+        push_elem_vec(&ast.expr, &right);
+        save_ctx(parser);
+        lex = next(parser);
+    }
+
+    return_ctx(parser);
+    return ast;
+}
 
 Ast add_expression(Parser *parser) {
     Ast ast = mult_expression(parser);
@@ -723,6 +837,89 @@ void print_ast(Ast ast, int depth) {
                ast.span.len, ast.span.row, ast.span.col);
         print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
         print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_MultExpr:
+        printf("%*c:Mult: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
+               ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_DivExpr:
+        printf("%*c:Div: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
+               ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_ModExpr:
+        printf("%*c:Mod: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
+               ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_CastExpr:
+        printf("%*c:Cast: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
+               ast.span.len, ast.span.row, ast.span.col);
+        // TODO: This should be a type
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_PreIncExpr:
+        printf("%*c:PreInc: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_PreDecExpr:
+        printf("%*c:PreDec: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_RefExpr:
+        printf("%*c:RefExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_DerefExpr:
+        printf("%*c:DerefExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_NegExpr:
+        printf("%*c:NegExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_InvExpr:
+        printf("%*c:InvExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_NotExpr:
+        printf("%*c:NotExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_SizeofExpr:
+        printf("%*c:SizeofExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
+        printf("%*c::\n", depth, ' ');
+        break;
+    case AST_AlignofExpr:
+        printf("%*c:AlignofExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
         printf("%*c::\n", depth, ' ');
         break;
     }
