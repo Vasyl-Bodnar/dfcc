@@ -12,21 +12,13 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     String *path = from_cstr(argv[1]);
-
-    Tree *tree = create_tree(32);
     Parser *parser = create_parser(path);
+    Ast ast = parse(parser);
 
-    Ast ast;
-    do {
-        ast = parse(parser);
-        push_elem_vec(&tree, &ast);
-    } while (ast.type != AST_Eof);
-
-    print_tree(tree, 0);
+    print_ast(ast, 0);
     print_parser(parser);
 
-    delete_tree(tree);
+    // delete_ast
     delete_parser(parser);
-
     return 0;
 }

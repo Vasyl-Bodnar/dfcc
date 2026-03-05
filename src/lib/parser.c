@@ -720,8 +720,107 @@ Ast expression(Parser *parser) {
     return ast;
 }
 
+Ast expression_statement(Parser *parser) {
+    // TODO: Handle attribute-specifier-seequence
+    save_ctx(parser);
+    Ast value = expression(parser);
+    if (value.type == AST_Eof) {
+        ignore_ctx(parser);
+        return value;
+    }
+
+    if (value.type == AST_Invalid) {
+        return_ctx(parser);
+        Lex lex = next(parser);
+        if (lex.type == LEX_Semicolon) {
+            return (Ast){.type = AST_ExprStat, .span = lex.span, .expr = 0};
+        }
+        return (Ast){.type = AST_Invalid,
+                     .span = lex.span,
+                     .invalid = BadSemicolonStatement};
+    }
+
+    Lex lex = next(parser);
+    if (lex.type == LEX_Semicolon) {
+        Ast ast = {
+            .type = AST_ExprStat, .span = lex.span, .expr = create_tree(1)};
+        push_elem_vec(&ast.expr, &value);
+        ignore_ctx(parser);
+        return ast;
+    }
+
+    ignore_ctx(parser);
+    return (Ast){.type = AST_Invalid,
+                 .span = lex.span,
+                 .invalid = BadSemicolonStatement};
+}
+
+Ast unlabeled_statement(Parser *parser) {
+    // TODO: Optional attribute-specifier-sequence,
+    // excluding for expression_statement (it handles that itself)
+    save_ctx(parser);
+    Lex lex = next(parser);
+    if (lex.type == LEX_LSquigly) {
+        save_ctx(parser);
+        lex = next(parser);
+        if (lex.type == LEX_RSquigly) {
+            ignore_ctx(parser);
+            ignore_ctx(parser);
+            return (Ast){.type = AST_CompStat, .span = lex.span, .expr = 0};
+        }
+        return_ctx(parser);
+
+        Ast value, ast = {.type = AST_CompStat,
+                          .span = lex.span,
+                          .expr = create_tree(1)};
+
+        while (1) {
+            // TODO: Declaration, label
+            value = unlabeled_statement(parser);
+            if (value.type == AST_Eof) {
+                delete_tree(ast.expr);
+                ignore_ctx(parser);
+                return (Ast){.type = AST_Invalid,
+                             .span = lex.span,
+                             .invalid = BadCompoundStatement};
+            }
+            push_elem_vec(&ast.expr, &value);
+
+            save_ctx(parser);
+            lex = next(parser);
+            if (lex.type == LEX_RSquigly) {
+                ignore_ctx(parser);
+                ignore_ctx(parser);
+                return ast;
+            }
+            return_ctx(parser);
+        }
+    }
+
+    if (lex.type == LEX_Keyword) {
+        switch (lex.key) {
+        case KEY_if:
+        case KEY_switch:
+        case KEY_while:
+        case KEY_do:
+        case KEY_for:
+        case KEY_goto:
+        case KEY_continue:
+        case KEY_break:
+        case KEY_return:
+            break;
+        default:
+            break;
+        }
+    }
+
+    return_ctx(parser);
+    return expression_statement(parser);
+}
+
+// TODO: Have to be more careful with how Ast are freed throughout
 Ast parse(Parser *parser) {
-    Ast ast = expression(parser);
+    Ast ast = unlabeled_statement(parser);
     reset_ctx(parser);
     return ast;
 }
@@ -784,21 +883,38 @@ void delete_parser(Parser *parser) {
 
 Tree *create_tree(size_t capacity) { return create_vec(capacity, sizeof(Ast)); }
 
+// TODO: Fix spans, currently we just grab the last lex we used for the Ast
 void print_ast(Ast ast, int depth) {
     switch (ast.type) {
     case AST_Invalid:
         printf("%*c:Ast Error %d: [%p, %zu, %zu, %zu]\n", depth, ' ',
                ast.invalid, ast.span.start, ast.span.len, ast.span.row,
                ast.span.col);
-        break;
+        return;
     case AST_Eof:
         printf("%*c:Ast Eof: [%p, %zu, %zu, %zu]\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
-        break;
+        return;
+    case AST_ExprStat:
+        printf("%*c:ExprStat; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        if (ast.expr) {
+            print_tree(ast.expr, depth + 2);
+        }
+        printf("%*c::\n", depth, ' ');
+        return;
+    case AST_CompStat:
+        printf("%*c:CompStat; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        if (ast.expr) {
+            print_tree(ast.expr, depth + 2);
+        }
+        printf("%*c::\n", depth, ' ');
+        return;
     case AST_Identifier:
         printf("%*c:Id %zu: [%p, %zu, %zu, %zu]\n", depth, ' ', ast.id,
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        break;
+        return;
     case AST_Constant:
         switch (ast.constant.type) {
         case UnsignedLongLong:
@@ -815,7 +931,7 @@ void print_ast(Ast ast, int depth) {
             printf("%*c:Constant%d val: %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
                    ast.constant.type, ast.constant.c, ast.span.start,
                    ast.span.len, ast.span.row, ast.span.col);
-            break;
+            return;
         case Char:
         case CharU8:
         case CharU16:
@@ -824,160 +940,104 @@ void print_ast(Ast ast, int depth) {
             printf("%*c:ConstantChar%d val: %zu: [%p, %zu, %zu, %zu]\n", depth,
                    ' ', ast.constant.type, ast.constant.c, ast.span.start,
                    ast.span.len, ast.span.row, ast.span.col);
-            break;
+            return;
         case Float:
         case Double:
         case LongDouble:
             printf("%*c:ConstantFloat%d val: %f: [%p, %zu, %zu, %zu]\n", depth,
                    ' ', ast.constant.type, ast.constant.d, ast.span.start,
                    ast.span.len, ast.span.row, ast.span.col);
-            break;
+            return;
         }
-        break;
     case AST_String:
         printf("%*c:String%d id: %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
                ast.string.type, ast.string.id, ast.span.start, ast.span.len,
                ast.span.row, ast.span.col);
-        break;
+        return;
     case AST_Expr:
         printf("%*c:Expr: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
-        print_tree(ast.expr, depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_AssignExpr:
         printf("%*c:Assign%d: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.assign.op, ast.span.start, ast.span.len, ast.span.row,
                ast.span.col);
-        print_tree(ast.assign.assigns, depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_CondExpr:
         printf("%*c:Condition: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_tree(ast.expr, depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_LogOrExpr:
         printf("%*c:LogicalOr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_tree(ast.expr, depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_LogAndExpr:
         printf("%*c:LogicalAnd: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_tree(ast.expr, depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_InclOrExpr:
         printf("%*c:InclusiveOr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_tree(ast.expr, depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_ExclOrExpr:
         printf("%*c:ExclusiveOr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_tree(ast.expr, depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_AndExpr:
         printf("%*c:And: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
-        print_tree(ast.expr, depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_EqualExpr:
-        printf("%*c:Equal\n", depth, ' ');
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
-               ast.span.len, ast.span.row, ast.span.col);
+        printf("%*c:Equal: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
         break;
     case AST_NotEqualExpr:
         printf("%*c:NotEqual: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_LessExpr:
         printf("%*c:Less: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_GreaterExpr:
         printf("%*c:Greater: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_LessEqExpr:
         printf("%*c:LessEqual: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_GreaterEqExpr:
         printf("%*c:GreaterEqual: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_ShiftLeftExpr:
         printf("%*c:ShiftLeft: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_ShiftRightExpr:
         printf("%*c:ShiftRight: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_AddExpr:
         printf("%*c:Add: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_SubExpr:
         printf("%*c:Sub: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_MultExpr:
         printf("%*c:Mult: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_DivExpr:
         printf("%*c:Div: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_ModExpr:
         printf("%*c:Mod: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_CastExpr:
         printf("%*c:Cast: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
@@ -986,100 +1046,72 @@ void print_ast(Ast ast, int depth) {
         print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
         print_ast(*(Ast *)at_elem_vec(ast.expr, 1), depth + 2);
         printf("%*c::\n", depth, ' ');
-        break;
+        return;
     case AST_PreIncExpr:
         printf("%*c:PreInc: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_PreDecExpr:
         printf("%*c:PreDec: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_RefExpr:
         printf("%*c:RefExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_DerefExpr:
         printf("%*c:DerefExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_NegExpr:
         printf("%*c:NegExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_InvExpr:
         printf("%*c:InvExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_NotExpr:
         printf("%*c:NotExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_SizeofExpr:
         printf("%*c:SizeofExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_AlignofExpr:
         printf("%*c:AlignofExpr: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_ArrAccessExpr:
         printf("%*c:ArrAccess: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_tree(ast.expr, depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_CallExpr:
         printf("%*c:Call: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
-        print_tree(ast.expr, depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_AccessExpr:
         printf("%*c:Access %zu: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.access.id, ast.span.start, ast.span.len, ast.span.row,
                ast.span.col);
-        print_tree(ast.access.expr, depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_DerefAccessExpr:
         printf("%*c:DerefAccess %zu: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.access.id, ast.span.start, ast.span.len, ast.span.row,
                ast.span.col);
-        print_tree(ast.access.expr, depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_PostIncExpr:
         printf("%*c:PostInc: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     case AST_PostDecExpr:
         printf("%*c:PostDec: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
-        print_ast(*(Ast *)at_elem_vec(ast.expr, 0), depth + 2);
-        printf("%*c::\n", depth, ' ');
         break;
     }
+    print_tree(ast.expr, depth + 2);
+    printf("%*c::\n", depth, ' ');
 }
 
 void print_tree(Tree *tree, int depth) {

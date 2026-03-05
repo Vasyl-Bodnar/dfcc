@@ -16,6 +16,10 @@ typedef Vector IdxStack; // Stack of Idx to Ctx
 enum ast_type {
     AST_Invalid = 0,
     AST_Eof,
+    // Statement
+    AST_ExprStat,
+    AST_CompStat,
+    // Expression
     AST_Identifier,
     AST_Constant,
     AST_String,
@@ -87,6 +91,8 @@ enum inv_type {
     BadPrimaryExpressionRParen,
     BadExpression,
     BadConditionalExpression,
+    BadSemicolonStatement,
+    BadCompoundStatement,
     BadUnimplemented
 };
 
@@ -152,5 +158,7 @@ void delete_parser(Parser *parser);
 Tree *create_tree(size_t capacity);
 void print_tree(Tree *tree, int depth);
 void delete_tree(Tree *tree);
+
+void print_ast(Ast ast, int depth);
 
 #endif // PARSER_H_
