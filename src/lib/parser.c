@@ -897,10 +897,55 @@ Ast unlabeled_statement(Parser *parser) {
             break;
         }
         case KEY_for:
+            break;
         case KEY_goto:
+            lex = next(parser);
+            if (lex.type == LEX_Identifier) {
+                Lex sem = next(parser);
+                if (sem.type == LEX_Semicolon) {
+                    ignore_ctx(parser);
+                    return (Ast){
+                        .type = AST_GotoStat, .span = lex.span, .id = lex.id};
+                }
+            }
+            break;
         case KEY_continue:
+            lex = next(parser);
+            if (lex.type == LEX_Semicolon) {
+                ignore_ctx(parser);
+                return (Ast){.type = AST_ContinueStat, .span = lex.span};
+            }
+            break;
         case KEY_break:
+            lex = next(parser);
+            if (lex.type == LEX_Semicolon) {
+                ignore_ctx(parser);
+                return (Ast){.type = AST_BreakStat, .span = lex.span};
+            }
+            break;
         case KEY_return:
+            save_ctx(parser);
+            lex = next(parser);
+            if (lex.type == LEX_Semicolon) {
+                ignore_ctx(parser);
+                ignore_ctx(parser);
+                return (Ast){
+                    .type = AST_ReturnStat, .span = lex.span, .expr = 0};
+            }
+            return_ctx(parser);
+
+            Tree *tree = create_tree(1);
+            Ast expr = expression(parser);
+            push_elem_vec(&tree, &expr);
+
+            lex = next(parser);
+            if (lex.type == LEX_Semicolon) {
+                ignore_ctx(parser);
+                return (Ast){
+                    .type = AST_ReturnStat, .span = lex.span, .expr = tree};
+            }
+            // TODO: Handle delete
+            delete_tree(tree);
             break;
         default:
             break;
@@ -989,15 +1034,15 @@ void print_ast(Ast ast, int depth) {
                ast.span.len, ast.span.row, ast.span.col);
         return;
     case AST_ExprStat:
-        printf("%*c:ExprStat; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
-               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        printf("%*c:Expr; [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
+               ast.span.len, ast.span.row, ast.span.col);
         if (ast.expr) {
             print_tree(ast.expr, depth + 2);
         }
         printf("%*c::\n", depth, ' ');
         return;
     case AST_CompStat:
-        printf("%*c:CompStat; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+        printf("%*c:Compound; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
         if (ast.expr) {
             print_tree(ast.expr, depth + 2);
@@ -1005,21 +1050,41 @@ void print_ast(Ast ast, int depth) {
         printf("%*c::\n", depth, ' ');
         return;
     case AST_IfStat:
-        printf("%*c:IfStat; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
-               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        printf("%*c:If; [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
+               ast.span.len, ast.span.row, ast.span.col);
         break;
     case AST_SwitchStat:
-        printf("%*c:SwitchStat; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+        printf("%*c:Switch; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
         break;
     case AST_WhileStat:
-        printf("%*c:WhileStat; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+        printf("%*c:While; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
         break;
     case AST_DoWhileStat:
-        printf("%*c:DoWhileStat; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+        printf("%*c:DoWhile; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
         break;
+    case AST_GotoStat:
+        printf("%*c:Goto %zu; [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.id,
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        return;
+    case AST_ContinueStat:
+        printf("%*c:Continue; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        return;
+    case AST_BreakStat:
+        printf("%*c:Break; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        return;
+    case AST_ReturnStat:
+        printf("%*c:Return; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        if (ast.expr) {
+            print_tree(ast.expr, depth + 2);
+        }
+        printf("%*c::\n", depth, ' ');
+        return;
     case AST_Identifier:
         printf("%*c:Id %zu: [%p, %zu, %zu, %zu]\n", depth, ' ', ast.id,
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);

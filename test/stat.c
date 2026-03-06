@@ -25,9 +25,14 @@
 
     while (6) {
         a + b;
+        break;
     }
 
     do {
         a + b;
+        break;
     } while (7);
+    goto x;
+    // x:
+    return 0;
 }

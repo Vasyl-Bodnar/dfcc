@@ -23,6 +23,11 @@ enum ast_type {
     AST_SwitchStat,
     AST_WhileStat,
     AST_DoWhileStat,
+    AST_ForStat,
+    AST_GotoStat,
+    AST_ContinueStat,
+    AST_BreakStat,
+    AST_ReturnStat,
     // Expression
     AST_Identifier,
     AST_Constant,
