@@ -800,9 +800,102 @@ Ast unlabeled_statement(Parser *parser) {
     if (lex.type == LEX_Keyword) {
         switch (lex.key) {
         case KEY_if:
+            lex = next(parser);
+            if (lex.type == LEX_LParen) {
+                Ast ast = {.type = AST_IfStat,
+                           .span = lex.span,
+                           .expr = create_tree(2)};
+                Ast expr = expression(parser);
+                push_elem_vec(&ast.expr, &expr);
+                lex = next(parser);
+                if (lex.type == LEX_RParen) {
+                    // TODO: statement, not just unlabeled
+                    // TODO: Else works like intended?
+                    Ast block = unlabeled_statement(parser);
+                    push_elem_vec(&ast.expr, &block);
+                    save_ctx(parser);
+                    lex = next(parser);
+                    if (lex.type == LEX_Keyword && lex.key == KEY_else) {
+                        block = unlabeled_statement(parser);
+                        push_elem_vec(&ast.expr, &block);
+                        ignore_ctx(parser);
+                    } else {
+                        return_ctx(parser);
+                    }
+                    ignore_ctx(parser);
+                    return ast;
+                }
+                // TODO: Proper delete
+                delete_tree(ast.expr);
+            }
+            break;
         case KEY_switch:
+            lex = next(parser);
+            if (lex.type == LEX_LParen) {
+                Ast ast = {.type = AST_SwitchStat,
+                           .span = lex.span,
+                           .expr = create_tree(2)};
+                Ast expr = expression(parser);
+                push_elem_vec(&ast.expr, &expr);
+                lex = next(parser);
+                if (lex.type == LEX_RParen) {
+                    Ast block = unlabeled_statement(parser);
+                    push_elem_vec(&ast.expr, &block);
+
+                    ignore_ctx(parser);
+                    return ast;
+                }
+                // TODO: Proper delete
+                delete_tree(ast.expr);
+            }
+            break;
         case KEY_while:
-        case KEY_do:
+            lex = next(parser);
+            if (lex.type == LEX_LParen) {
+                Ast ast = {.type = AST_WhileStat,
+                           .span = lex.span,
+                           .expr = create_tree(2)};
+                Ast expr = expression(parser);
+                push_elem_vec(&ast.expr, &expr);
+                lex = next(parser);
+                if (lex.type == LEX_RParen) {
+                    Ast block = unlabeled_statement(parser);
+                    push_elem_vec(&ast.expr, &block);
+
+                    ignore_ctx(parser);
+                    return ast;
+                }
+                // TODO: Proper delete
+                delete_tree(ast.expr);
+            }
+            break;
+        case KEY_do: {
+            Ast block = unlabeled_statement(parser);
+            lex = next(parser);
+            if (lex.type == LEX_Keyword && lex.key == KEY_while) {
+                Ast ast = {.type = AST_DoWhileStat,
+                           .span = lex.span,
+                           .expr = create_tree(2)};
+                push_elem_vec(&ast.expr, &block);
+                lex = next(parser);
+                if (lex.type == LEX_LParen) {
+                    Ast expr = expression(parser);
+                    push_elem_vec(&ast.expr, &expr);
+                    lex = next(parser);
+                    if (lex.type == LEX_RParen) {
+                        lex = next(parser);
+                        if (lex.type == LEX_Semicolon) {
+                            ignore_ctx(parser);
+                            return ast;
+                        }
+                    }
+
+                    // TODO: Proper delete
+                    delete_tree(ast.expr);
+                }
+            }
+            break;
+        }
         case KEY_for:
         case KEY_goto:
         case KEY_continue:
@@ -911,6 +1004,22 @@ void print_ast(Ast ast, int depth) {
         }
         printf("%*c::\n", depth, ' ');
         return;
+    case AST_IfStat:
+        printf("%*c:IfStat; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
+    case AST_SwitchStat:
+        printf("%*c:SwitchStat; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
+    case AST_WhileStat:
+        printf("%*c:WhileStat; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
+    case AST_DoWhileStat:
+        printf("%*c:DoWhileStat; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
     case AST_Identifier:
         printf("%*c:Id %zu: [%p, %zu, %zu, %zu]\n", depth, ' ', ast.id,
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);

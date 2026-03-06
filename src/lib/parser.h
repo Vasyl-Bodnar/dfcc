@@ -19,6 +19,10 @@ enum ast_type {
     // Statement
     AST_ExprStat,
     AST_CompStat,
+    AST_IfStat,
+    AST_SwitchStat,
+    AST_WhileStat,
+    AST_DoWhileStat,
     // Expression
     AST_Identifier,
     AST_Constant,
