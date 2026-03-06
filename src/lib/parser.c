@@ -66,6 +66,7 @@ Ast primary_expression(Parser *parser) {
         if (lex.type == LEX_RParen) {
             return ast;
         } else {
+            delete_ast(ast);
             return (Ast){.type = AST_Invalid,
                          .span = lex.span,
                          .invalid = BadPrimaryExpressionRParen};
@@ -351,8 +352,7 @@ Ast mult_expression(Parser *parser) {
             type = AST_ModExpr;
             break;
         default:
-            // TODO: Delete tree and ast
-            // This is impossible however
+            delete_tree(tree);
             return (Ast){.type = AST_Invalid,
                          .span = lex.span,
                          .invalid = BadUnimplemented};
@@ -646,6 +646,7 @@ Ast conditional_expression(Parser *parser) {
             ignore_ctx(parser);
             return (Ast){.type = AST_CondExpr, .span = lex.span, .expr = tree};
         } else {
+            delete_tree(tree);
             ignore_ctx(parser);
             return (Ast){.type = AST_Invalid,
                          .span = lex.span,
@@ -749,6 +750,7 @@ Ast expression_statement(Parser *parser) {
         return ast;
     }
 
+    delete_ast(value);
     ignore_ctx(parser);
     return (Ast){.type = AST_Invalid,
                  .span = lex.span,
@@ -778,7 +780,8 @@ Ast unlabeled_statement(Parser *parser) {
             // TODO: Declaration, label
             value = unlabeled_statement(parser);
             if (value.type == AST_Eof) {
-                delete_tree(ast.expr);
+                delete_ast(ast);
+                delete_ast(value);
                 ignore_ctx(parser);
                 return (Ast){.type = AST_Invalid,
                              .span = lex.span,
@@ -825,8 +828,7 @@ Ast unlabeled_statement(Parser *parser) {
                     ignore_ctx(parser);
                     return ast;
                 }
-                // TODO: Proper delete
-                delete_tree(ast.expr);
+                delete_ast(ast);
             }
             break;
         case KEY_switch:
@@ -845,8 +847,7 @@ Ast unlabeled_statement(Parser *parser) {
                     ignore_ctx(parser);
                     return ast;
                 }
-                // TODO: Proper delete
-                delete_tree(ast.expr);
+                delete_ast(ast);
             }
             break;
         case KEY_while:
@@ -865,8 +866,7 @@ Ast unlabeled_statement(Parser *parser) {
                     ignore_ctx(parser);
                     return ast;
                 }
-                // TODO: Proper delete
-                delete_tree(ast.expr);
+                delete_ast(ast);
             }
             break;
         case KEY_do: {
@@ -889,10 +889,8 @@ Ast unlabeled_statement(Parser *parser) {
                             return ast;
                         }
                     }
-
-                    // TODO: Proper delete
-                    delete_tree(ast.expr);
                 }
+                delete_ast(ast);
             }
             break;
         }
@@ -944,7 +942,6 @@ Ast unlabeled_statement(Parser *parser) {
                 return (Ast){
                     .type = AST_ReturnStat, .span = lex.span, .expr = tree};
             }
-            // TODO: Handle delete
             delete_tree(tree);
             break;
         default:
@@ -1034,7 +1031,7 @@ void print_ast(Ast ast, int depth) {
                ast.span.len, ast.span.row, ast.span.col);
         return;
     case AST_ExprStat:
-        printf("%*c:Expr; [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
+        printf("%*c:Stat; [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
         if (ast.expr) {
             print_tree(ast.expr, depth + 2);
@@ -1064,6 +1061,10 @@ void print_ast(Ast ast, int depth) {
     case AST_DoWhileStat:
         printf("%*c:DoWhile; [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
+    case AST_ForStat:
+        printf("%*c:For; [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
+               ast.span.len, ast.span.row, ast.span.col);
         break;
     case AST_GotoStat:
         printf("%*c:Goto %zu; [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.id,
@@ -1294,5 +1295,74 @@ void print_tree(Tree *tree, int depth) {
     }
 }
 
-// TODO: Delete Subtrees
-void delete_tree(Tree *tree) { return delete_vec(tree); }
+void delete_ast(Ast ast) {
+    switch (ast.type) {
+    case AST_Invalid:
+    case AST_Eof:
+    case AST_GotoStat:
+    case AST_ContinueStat:
+    case AST_BreakStat:
+    case AST_Identifier:
+    case AST_Constant:
+    case AST_String:
+        return;
+    case AST_ExprStat:
+    case AST_CompStat:
+    case AST_IfStat:
+    case AST_SwitchStat:
+    case AST_WhileStat:
+    case AST_DoWhileStat:
+    case AST_ForStat:
+    case AST_ReturnStat:
+        if (ast.expr) {
+            delete_tree(ast.expr);
+        }
+        return;
+    case AST_Expr:
+        delete_tree(ast.expr);
+    case AST_AssignExpr:
+    case AST_CondExpr:
+    case AST_LogOrExpr:
+    case AST_LogAndExpr:
+    case AST_InclOrExpr:
+    case AST_ExclOrExpr:
+    case AST_AndExpr:
+    case AST_EqualExpr:
+    case AST_NotEqualExpr:
+    case AST_LessExpr:
+    case AST_GreaterExpr:
+    case AST_LessEqExpr:
+    case AST_GreaterEqExpr:
+    case AST_ShiftLeftExpr:
+    case AST_ShiftRightExpr:
+    case AST_AddExpr:
+    case AST_SubExpr:
+    case AST_MultExpr:
+    case AST_DivExpr:
+    case AST_ModExpr:
+    case AST_CastExpr:
+    case AST_PreIncExpr:
+    case AST_PreDecExpr:
+    case AST_RefExpr:
+    case AST_DerefExpr:
+    case AST_NegExpr:
+    case AST_InvExpr:
+    case AST_NotExpr:
+    case AST_SizeofExpr:
+    case AST_AlignofExpr:
+    case AST_ArrAccessExpr:
+    case AST_CallExpr:
+    case AST_AccessExpr:
+    case AST_DerefAccessExpr:
+    case AST_PostIncExpr:
+    case AST_PostDecExpr:
+        delete_tree(ast.expr);
+    }
+}
+
+void delete_tree(Tree *tree) {
+    for (uint64_t i = 0; i < tree->length; i++) {
+        delete_ast(*(Ast *)at_elem_vec((Tree *)tree, i));
+    }
+    delete_vec(tree);
+}

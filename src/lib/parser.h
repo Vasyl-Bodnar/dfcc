@@ -169,5 +169,6 @@ void print_tree(Tree *tree, int depth);
 void delete_tree(Tree *tree);
 
 void print_ast(Ast ast, int depth);
+void delete_ast(Ast ast);
 
 #endif // PARSER_H_
