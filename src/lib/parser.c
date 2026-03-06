@@ -736,6 +736,8 @@ Ast expression_statement(Parser *parser) {
         if (lex.type == LEX_Semicolon) {
             return (Ast){.type = AST_ExprStat, .span = lex.span, .expr = 0};
         }
+
+        delete_ast(value);
         return (Ast){.type = AST_Invalid,
                      .span = lex.span,
                      .invalid = BadSemicolonStatement};
@@ -750,6 +752,7 @@ Ast expression_statement(Parser *parser) {
         return ast;
     }
 
+    // TODO: Review this part
     delete_ast(value);
     ignore_ctx(parser);
     return (Ast){.type = AST_Invalid,
@@ -757,6 +760,7 @@ Ast expression_statement(Parser *parser) {
                  .invalid = BadSemicolonStatement};
 }
 
+// Could add some abstractions, but this should be sufficient
 Ast unlabeled_statement(Parser *parser) {
     // TODO: Optional attribute-specifier-sequence,
     // excluding for expression_statement (it handles that itself)
@@ -895,6 +899,36 @@ Ast unlabeled_statement(Parser *parser) {
             break;
         }
         case KEY_for:
+            // TODO: Handle declaration kind too e.g. int i = 0;
+            lex = next(parser);
+            if (lex.type == LEX_LParen) {
+                Ast expr, ast = {.type = AST_ForStat,
+                                 .span = lex.span,
+                                 .expr = create_tree(4)};
+                for (int i = 0; i < 3; i++) {
+                    save_ctx(parser);
+                    lex = next(parser);
+                    if (lex.type == LEX_Semicolon) {
+                        ignore_ctx(parser);
+                    } else {
+                        return_ctx(parser);
+                        expr = expression(parser);
+                        push_elem_vec(&ast.expr, &expr);
+                        lex = next(parser);
+                        if (i == 2 && lex.type == LEX_RParen) {
+                            Ast block = unlabeled_statement(parser);
+                            push_elem_vec(&ast.expr, &block);
+
+                            ignore_ctx(parser);
+                            return ast;
+                        } else if (lex.type != LEX_Semicolon) {
+                            break;
+                        }
+                    }
+                }
+
+                delete_ast(ast);
+            }
             break;
         case KEY_goto:
             lex = next(parser);

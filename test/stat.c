@@ -32,7 +32,13 @@
         a + b;
         break;
     } while (7);
+
+    for (i = 0; i < 8; i++) {
+        continue;
+    }
+
     goto x;
     // x:
+
     return 0;
 }
