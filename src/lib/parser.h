@@ -15,7 +15,13 @@ typedef Vector IdxStack; // Stack of Idx to Ctx
 // Operations like AST_Equal are binary only
 enum ast_type {
     AST_Invalid = 0,
+    AST_EofInvalid, // Bad Eof e.g. [
     AST_Eof,
+    // Special
+    AST_LexList,       // general grouping e.g. a, b, c
+    AST_Attribute,     // atr, atr(), atr(a, b), xxx::atr, etc.
+    AST_AttributeList, // [[atr0]][[atr1, atr2]], [[atr0, atr1, atr2]], etc.
+    AST_Attributed,    // [[]] stat
     // Statement
     AST_ExprStat,
     AST_CompStat,
@@ -96,6 +102,8 @@ enum num_type {
 enum str_type { ASCII = 0, U8, U16, U32, Wide };
 
 enum inv_type {
+    BadTokenList,
+    BadAttributeSpecifier,
     BadPrimaryExpression,
     BadPrimaryExpressionRParen,
     BadExpression,
@@ -126,6 +134,7 @@ typedef struct Ast {
     Span span;
     union {
         Tree *expr; // General option, contents depend on type
+        Lexes *lexes;
         size_t id;
         enum inv_type invalid;
         struct {

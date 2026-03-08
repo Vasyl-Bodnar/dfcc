@@ -1336,363 +1336,420 @@ void print_ids(const Ids *ids) {
     }
 }
 
-void print_lexes(const Lexes *lexes) {
+void print_lexes(const Lexes *lexes, int depth) {
     for (uint64_t i = 0; i < lexes->length; i++) {
         Lex lex = *(Lex *)at_elem_vec((Lexes *)lexes, i);
         switch (lex.type) {
         case LEX_Invalid:
             if (lex.invalid) {
-                printf(":Lex Error %d: [%p, %zu, %zu, %zu]\n", lex.invalid,
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Lex Error %d: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.invalid, lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
             } else {
-                printf(":Lex Ok: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Lex Ok: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
             }
             break;
         case LEX_Eof:
-            printf(":End of File: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:End of File: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_StringU8:
-            printf(":StringU8 id %zu: [%p, %zu, %zu, %zu]\n", lex.id,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:StringU8 id %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.id, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_StringU16:
-            printf(":StringU16 id %zu: [%p, %zu, %zu, %zu]\n", lex.id,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:StringU16 id %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.id, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_StringU32:
-            printf(":StringU32 id %zu: [%p, %zu, %zu, %zu]\n", lex.id,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:StringU32 id %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.id, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_StringWide:
-            printf(":StringWide id %zu: [%p, %zu, %zu, %zu]\n", lex.id,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:StringWide id %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.id, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_String:
-            printf(":String id %zu: [%p, %zu, %zu, %zu]\n", lex.id,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:String id %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.id, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_Identifier:
-            printf(":Identifier id %zu: [%p, %zu, %zu, %zu]\n", lex.id,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Identifier id %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.id, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantUnsignedLongLong:
-            printf(":UnsignedLongLongNumber %zu: [%p, %zu, %zu, %zu]\n",
-                   lex.constant, lex.span.start, lex.span.len, lex.span.row,
-                   lex.span.col);
+            printf("%*c:UnsignedLongLongNumber %zu: [%p, %zu, %zu, %zu]\n",
+                   depth, ' ', lex.constant, lex.span.start, lex.span.len,
+                   lex.span.row, lex.span.col);
             break;
         case LEX_ConstantUnsignedLong:
-            printf(":UnsignedLongNumber %zu: [%p, %zu, %zu, %zu]\n",
-                   lex.constant, lex.span.start, lex.span.len, lex.span.row,
-                   lex.span.col);
+            printf("%*c:UnsignedLongNumber %zu: [%p, %zu, %zu, %zu]\n", depth,
+                   ' ', lex.constant, lex.span.start, lex.span.len,
+                   lex.span.row, lex.span.col);
             break;
         case LEX_ConstantUnsignedBitPrecise:
-            printf(":UnsignedBitPreciseNumber %zu: [%p, %zu, %zu, %zu]\n",
+            printf("%*c:UnsignedBitPreciseNumber %zu: [%p, %zu, %zu, %zu]\n",
+                   depth, ' ', lex.constant, lex.span.start, lex.span.len,
+                   lex.span.row, lex.span.col);
+            break;
+        case LEX_ConstantUnsigned:
+            printf("%*c:UnsignedNumber %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
                    lex.constant, lex.span.start, lex.span.len, lex.span.row,
                    lex.span.col);
             break;
-        case LEX_ConstantUnsigned:
-            printf(":UnsignedNumber %zu: [%p, %zu, %zu, %zu]\n", lex.constant,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
-            break;
         case LEX_ConstantLongLong:
-            printf(":LongLongNumber %zu: [%p, %zu, %zu, %zu]\n", lex.constant,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:LongLongNumber %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.constant, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantLong:
-            printf(":LongNumber %zu: [%p, %zu, %zu, %zu]\n", lex.constant,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:LongNumber %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.constant, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantBitPrecise:
-            printf(":BitPreciseNumber %zu: [%p, %zu, %zu, %zu]\n", lex.constant,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:BitPreciseNumber %zu: [%p, %zu, %zu, %zu]\n", depth,
+                   ' ', lex.constant, lex.span.start, lex.span.len,
+                   lex.span.row, lex.span.col);
             break;
         case LEX_Constant:
-            printf(":Number %zu: [%p, %zu, %zu, %zu]\n", lex.constant,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Number %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.constant, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantFloat:
-            printf(":Float %f: [%p, %zu, %zu, %zu]\n", lex.floating,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Float %f: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.floating, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantDouble:
-            printf(":Double %f: [%p, %zu, %zu, %zu]\n", lex.floating,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Double %f: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.floating, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantLongDouble:
-            printf(":LongDouble %f: [%p, %zu, %zu, %zu]\n", lex.floating,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:LongDouble %f: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.floating, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantDecimal32:
-            printf(":Dec32 %f: [%p, %zu, %zu, %zu]\n", lex.floating,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Dec32 %f: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.floating, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantDecimal64:
-            printf(":Dec64 %f: [%p, %zu, %zu, %zu]\n", lex.floating,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Dec64 %f: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.floating, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantDecimal128:
-            printf(":Dec128 %f: [%p, %zu, %zu, %zu]\n", lex.floating,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Dec128 %f: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.floating, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantCharU8:
-            printf(":CharU8 %zu: [%p, %zu, %zu, %zu]\n", lex.constant,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:CharU8 %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.constant, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantCharU16:
-            printf(":CharU16 %zu: [%p, %zu, %zu, %zu]\n", lex.constant,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:CharU16 %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.constant, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantCharU32:
-            printf(":CharU32 %zu: [%p, %zu, %zu, %zu]\n", lex.constant,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:CharU32 %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.constant, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantCharWide:
-            printf(":CharWide %zu: [%p, %zu, %zu, %zu]\n", lex.constant,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:CharWide %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.constant, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_ConstantChar:
-            printf(":Char %zu: [%p, %zu, %zu, %zu]\n", lex.constant,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Char %zu: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.constant, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_Keyword:
             switch (lex.key) {
             case KEY_alignas:
-                printf(":Keyword alignas: [%p, %zu, %zu, %zu]\n",
+                printf("%*c:Keyword alignas: [%p, %zu, %zu, %zu]\n", depth, ' ',
                        lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY_alignof:
-                printf(":Keyword alignof: [%p, %zu, %zu, %zu]\n",
+                printf("%*c:Keyword alignof: [%p, %zu, %zu, %zu]\n", depth, ' ',
                        lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY_auto:
-                printf(":Keyword auto: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword auto: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_bool:
-                printf(":Keyword bool: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword bool: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_break:
-                printf(":Keyword break: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword break: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_case:
-                printf(":Keyword case: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword case: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_char:
-                printf(":Keyword char: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword char: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_const:
-                printf(":Keyword const: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword const: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_constexpr:
-                printf(":Keyword constexpr: [%p, %zu, %zu, %zu]\n",
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Keyword constexpr: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY_continue:
-                printf(":Keyword continue: [%p, %zu, %zu, %zu]\n",
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Keyword continue: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY_default:
-                printf(":Keyword default: [%p, %zu, %zu, %zu]\n",
+                printf("%*c:Keyword default: [%p, %zu, %zu, %zu]\n", depth, ' ',
                        lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY_do:
-                printf(":Keyword do: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword do: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_double:
-                printf(":Keyword double: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword double: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_else:
-                printf(":Keyword else: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword else: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_enum:
-                printf(":Keyword enum: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword enum: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_extern:
-                printf(":Keyword extern: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword extern: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_false:
-                printf(":Keyword false: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword false: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_float:
-                printf(":Keyword float: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword float: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_for:
-                printf(":Keyword for: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword for: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_goto:
-                printf(":Keyword goto: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword goto: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_if:
-                printf(":Keyword if: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword if: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_inline:
-                printf(":Keyword inline: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword inline: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_int:
-                printf(":Keyword int: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword int: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_long:
-                printf(":Keyword long: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword long: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_nullptr:
-                printf(":Keyword nullptr: [%p, %zu, %zu, %zu]\n",
+                printf("%*c:Keyword nullptr: [%p, %zu, %zu, %zu]\n", depth, ' ',
                        lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY_register:
-                printf(":Keyword register: [%p, %zu, %zu, %zu]\n",
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Keyword register: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY_restrict:
-                printf(":Keyword restrict: [%p, %zu, %zu, %zu]\n",
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Keyword restrict: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY_return:
-                printf(":Keyword return: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword return: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_short:
-                printf(":Keyword short: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword short: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_signed:
-                printf(":Keyword signed: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword signed: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_sizeof:
-                printf(":Keyword sizeof: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword sizeof: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_static:
-                printf(":Keyword static: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword static: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_static_assert:
-                printf(":Keyword static: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword static: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_struct:
-                printf(":Keyword struct: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword struct: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_switch:
-                printf(":Keyword switch: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword switch: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_thread_local:
-                printf(":Keyword thread: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword thread: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_true:
-                printf(":Keyword true: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword true: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_typedef:
-                printf(":Keyword typedef: [%p, %zu, %zu, %zu]\n",
+                printf("%*c:Keyword typedef: [%p, %zu, %zu, %zu]\n", depth, ' ',
                        lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY_typeof:
-                printf(":Keyword typeof: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword typeof: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_typeof_unqual:
-                printf(":Keyword typeof: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword typeof: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_union:
-                printf(":Keyword union: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword union: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY_unsigned:
-                printf(":Keyword unsigned: [%p, %zu, %zu, %zu]\n",
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Keyword unsigned: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY_void:
-                printf(":Keyword void: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
-                break;
-            case KEY_volatile:
-                printf(":Keyword volatile: [%p, %zu, %zu, %zu]\n",
+                printf("%*c:Keyword void: [%p, %zu, %zu, %zu]\n", depth, ' ',
                        lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
+            case KEY_volatile:
+                printf("%*c:Keyword volatile: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
+                break;
             case KEY_while:
-                printf(":Keyword while: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                       lex.span.len, lex.span.row, lex.span.col);
+                printf("%*c:Keyword while: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                       lex.span.start, lex.span.len, lex.span.row,
+                       lex.span.col);
                 break;
             case KEY__Atomic:
-                printf(":Keyword _Atomic: [%p, %zu, %zu, %zu]\n",
+                printf("%*c:Keyword _Atomic: [%p, %zu, %zu, %zu]\n", depth, ' ',
                        lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY__BitInt:
-                printf(":Keyword _BitInt: [%p, %zu, %zu, %zu]\n",
+                printf("%*c:Keyword _BitInt: [%p, %zu, %zu, %zu]\n", depth, ' ',
                        lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY__Complex:
-                printf(":Keyword _Complex: [%p, %zu, %zu, %zu]\n",
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Keyword _Complex: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY__Decimal128:
-                printf(":Keyword _Decimal128: [%p, %zu, %zu, %zu]\n",
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Keyword _Decimal128: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY__Decimal32:
-                printf(":Keyword _Decimal32: [%p, %zu, %zu, %zu]\n",
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Keyword _Decimal32: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY__Decimal64:
-                printf(":Keyword _Decimal64: [%p, %zu, %zu, %zu]\n",
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Keyword _Decimal64: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY__Generic:
-                printf(":Keyword _Generic: [%p, %zu, %zu, %zu]\n",
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Keyword _Generic: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY__Imaginary:
-                printf(":Keyword _Imaginary: [%p, %zu, %zu, %zu]\n",
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Keyword _Imaginary: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY__Noreturn:
-                printf(":Keyword _Noreturn: [%p, %zu, %zu, %zu]\n",
-                       lex.span.start, lex.span.len, lex.span.row,
+                printf("%*c:Keyword _Noreturn: [%p, %zu, %zu, %zu]\n", depth,
+                       ' ', lex.span.start, lex.span.len, lex.span.row,
                        lex.span.col);
                 break;
             case KEY_COUNT:
@@ -1700,208 +1757,209 @@ void print_lexes(const Lexes *lexes) {
             }
             break;
         case LEX_MacroToken:
-            printf(":MacroToken: %d [%p, %zu, %zu, %zu]\n", lex.macro,
-                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:MacroToken: %d [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.macro, lex.span.start, lex.span.len, lex.span.row,
+                   lex.span.col);
             break;
         case LEX_MacroEndToken:
-            printf(":MacroEndToken: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:MacroEndToken: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_LBracket:
-            printf(":LBracket: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:LBracket: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_RBracket:
-            printf(":RBracket: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:RBracket: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_LParen:
-            printf(":LParen: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:LParen: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_RParen:
-            printf(":RParen: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:RParen: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_LSquigly:
-            printf(":LSquigly: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:LSquigly: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_RSquigly:
-            printf(":RSquigly: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:RSquigly: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Dot:
-            printf(":Dot: [%p, %zu, %zu, %zu]\n", lex.span.start, lex.span.len,
-                   lex.span.row, lex.span.col);
+            printf("%*c:Dot: [%p, %zu, %zu, %zu]\n", depth, ' ', lex.span.start,
+                   lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Arrow:
-            printf(":Arrow: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Arrow: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_PlusPlus:
-            printf(":PlusPlus: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:PlusPlus: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_MinusMinus:
-            printf(":MinusMinus: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:MinusMinus: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Et:
-            printf(":Et: [%p, %zu, %zu, %zu]\n", lex.span.start, lex.span.len,
-                   lex.span.row, lex.span.col);
+            printf("%*c:Et: [%p, %zu, %zu, %zu]\n", depth, ' ', lex.span.start,
+                   lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Star:
-            printf(":Star: [%p, %zu, %zu, %zu]\n", lex.span.start, lex.span.len,
-                   lex.span.row, lex.span.col);
+            printf("%*c:Star: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Plus:
-            printf(":Plus: [%p, %zu, %zu, %zu]\n", lex.span.start, lex.span.len,
-                   lex.span.row, lex.span.col);
+            printf("%*c:Plus: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Minus:
-            printf(":Minus: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Minus: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Tilde:
-            printf(":Tilde: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Tilde: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Exclamation:
-            printf(":Exclamation: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Exclamation: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Slash:
-            printf(":Slash: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Slash: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Percent:
-            printf(":Percent: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Percent: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_LeftLeft:
-            printf(":LeftLeft: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:LeftLeft: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_RightRight:
-            printf(":RightRight: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:RightRight: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Left:
-            printf(":Left: [%p, %zu, %zu, %zu]\n", lex.span.start, lex.span.len,
-                   lex.span.row, lex.span.col);
+            printf("%*c:Left: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Right:
-            printf(":Right: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Right: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_LeftEqual:
-            printf(":LeftEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:LeftEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_RightEqual:
-            printf(":RightEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:RightEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_EqualEqual:
-            printf(":EqualEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:EqualEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_ExclamationEqual:
-            printf(":ExclamationEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:ExclamationEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Caret:
-            printf(":Caret: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Caret: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Pipe:
-            printf(":Pipe: [%p, %zu, %zu, %zu]\n", lex.span.start, lex.span.len,
-                   lex.span.row, lex.span.col);
+            printf("%*c:Pipe: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_EtEt:
-            printf(":EtEt: [%p, %zu, %zu, %zu]\n", lex.span.start, lex.span.len,
-                   lex.span.row, lex.span.col);
+            printf("%*c:EtEt: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_PipePipe:
-            printf(":PipePipe: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:PipePipe: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Question:
-            printf(":Question: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Question: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Colon:
-            printf(":Colon: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Colon: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_ColonColon:
-            printf(":ColonColon: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:ColonColon: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Semicolon:
-            printf(":Semicolon: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Semicolon: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_DotDotDot:
-            printf(":DotDotDot: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:DotDotDot: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Equal:
-            printf(":Equal: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Equal: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_StarEqual:
-            printf(":StarEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:StarEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_SlashEqual:
-            printf(":SlashEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:SlashEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_PercentEqual:
-            printf(":PercentEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:PercentEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_PlusEqual:
-            printf(":PlusEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:PlusEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_MinusEqual:
-            printf(":MinusEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:MinusEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_LeftLeftEqual:
-            printf(":LeftLeftEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:LeftLeftEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_RightRightEqual:
-            printf(":RightRightEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:RightRightEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_EtEqual:
-            printf(":EtEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:EtEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_CaretEqual:
-            printf(":CaretEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:CaretEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_PipeEqual:
-            printf(":PipeEqual: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:PipeEqual: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Comma:
-            printf(":Comma: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:Comma: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Hash:
-            printf(":Hash: [%p, %zu, %zu, %zu]\n", lex.span.start, lex.span.len,
-                   lex.span.row, lex.span.col);
+            printf("%*c:Hash: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_HashHash:
-            printf(":HashHash: [%p, %zu, %zu, %zu]\n", lex.span.start,
-                   lex.span.len, lex.span.row, lex.span.col);
+            printf("%*c:HashHash: [%p, %zu, %zu, %zu]\n", depth, ' ',
+                   lex.span.start, lex.span.len, lex.span.row, lex.span.col);
             break;
         case LEX_Comment:
             break;

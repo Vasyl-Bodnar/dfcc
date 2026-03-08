@@ -543,7 +543,7 @@ void print_macro_table(Macros *macro_table) {
             }
             if (macro->lexes) {
                 printf("\n.elems-len: %zu elems:\n", macro->lexes->length);
-                print_lexes(macro->lexes);
+                print_lexes(macro->lexes, 0);
             }
             printf("#\n");
             continue;
@@ -551,7 +551,7 @@ void print_macro_table(Macros *macro_table) {
         if (macro->lexes) {
             if (macro->lexes->length) {
                 printf(" elems-len: %zu elems:\n", macro->lexes->length);
-                print_lexes(macro->lexes);
+                print_lexes(macro->lexes, 0);
             } else {
                 printf(" elems-len: %zu elems: none", macro->lexes->length);
             }
@@ -577,14 +577,14 @@ void print_incl_table(Includes *incl_table) {
             }
             if (resc->lexes) {
                 printf(" elems-len: %zu elems:\n", resc->lexes->length);
-                print_lexes(resc->lexes);
+                print_lexes(resc->lexes, 0);
             }
             printf(">\n");
         } else if (resc->type == IncludeParameter) {
             printf("<PARAM: mid: %zu token-idx: %zu", resc->mid, resc->idx);
             if (resc->lexes) {
                 printf(" elems-len: %zu elems:\n", resc->lexes->length);
-                print_lexes(resc->lexes);
+                print_lexes(resc->lexes, 0);
             }
             printf(">\n");
         } else {

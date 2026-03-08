@@ -252,7 +252,7 @@ Ids *create_ids(size_t capacity);
 
 Lexes *create_lexes(size_t capacity);
 
-void print_lexes(const Lexes *lexes);
+void print_lexes(const Lexes *lexes, int depth);
 
 void print_ids(const Ids *id_table);
 

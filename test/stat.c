@@ -1,5 +1,10 @@
-{
-    if (1) {
+[[deprecated("test"), noreturn]] [[nodiscard]] {
+    ;
+    [[]] 1;
+
+    [[]] if (0) {
+        a + b;
+    } else if (1) {
         a + b;
     } else {
         1;

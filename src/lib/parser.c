@@ -7,6 +7,8 @@
 #include "vec.h"
 #include <stdio.h>
 
+// NOTE: Could use more parsing abstractions (e.g. optional, check this token)
+
 Ast expression(Parser *parser);
 Ast assignment_expression(Parser *parser);
 Ast cast_expression(Parser *parser);
@@ -128,7 +130,7 @@ Ast compound_literal(Parser *parser) {
 Ast postfix_expression(Parser *parser) {
     // TODO: Should be primary if not compound
     Ast ast, value = compound_literal(parser);
-    if (value.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return value;
     }
 
@@ -329,7 +331,7 @@ Ast cast_expression(Parser *parser) {
 // However, this is not important enough to bother
 Ast mult_expression(Parser *parser) {
     Ast ast = cast_expression(parser);
-    if (ast.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return ast;
     }
 
@@ -373,7 +375,7 @@ Ast mult_expression(Parser *parser) {
 
 Ast add_expression(Parser *parser) {
     Ast ast = mult_expression(parser);
-    if (ast.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return ast;
     }
 
@@ -400,7 +402,7 @@ Ast add_expression(Parser *parser) {
 
 Ast shift_expression(Parser *parser) {
     Ast ast = add_expression(parser);
-    if (ast.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return ast;
     }
 
@@ -427,7 +429,7 @@ Ast shift_expression(Parser *parser) {
 
 Ast rel_expression(Parser *parser) {
     Ast ast = shift_expression(parser);
-    if (ast.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return ast;
     }
 
@@ -455,7 +457,7 @@ Ast rel_expression(Parser *parser) {
 
 Ast equal_expression(Parser *parser) {
     Ast ast = rel_expression(parser);
-    if (ast.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return ast;
     }
 
@@ -485,7 +487,7 @@ Ast equal_expression(Parser *parser) {
 // However, it is not necessary, for now.
 Ast and_expression(Parser *parser) {
     Ast ast = equal_expression(parser);
-    if (ast.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return ast;
     }
 
@@ -513,7 +515,7 @@ Ast and_expression(Parser *parser) {
 
 Ast exclor_expression(Parser *parser) {
     Ast ast = and_expression(parser);
-    if (ast.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return ast;
     }
 
@@ -541,7 +543,7 @@ Ast exclor_expression(Parser *parser) {
 
 Ast inclor_expression(Parser *parser) {
     Ast ast = exclor_expression(parser);
-    if (ast.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return ast;
     }
 
@@ -569,7 +571,7 @@ Ast inclor_expression(Parser *parser) {
 
 Ast logand_expression(Parser *parser) {
     Ast ast = inclor_expression(parser);
-    if (ast.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return ast;
     }
 
@@ -597,7 +599,7 @@ Ast logand_expression(Parser *parser) {
 
 Ast logor_expression(Parser *parser) {
     Ast ast = logand_expression(parser);
-    if (ast.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return ast;
     }
 
@@ -625,7 +627,7 @@ Ast logor_expression(Parser *parser) {
 
 Ast conditional_expression(Parser *parser) {
     Ast ast = logor_expression(parser);
-    if (ast.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return ast;
     }
 
@@ -661,7 +663,7 @@ Ast conditional_expression(Parser *parser) {
 Ast assignment_expression(Parser *parser) {
     save_ctx(parser);
     Ast ast = unary_expression(parser);
-    if (ast.type == AST_Eof) {
+    if (ast.type == AST_Eof || ast.type == AST_EofInvalid) {
         return ast;
     }
 
@@ -721,50 +723,222 @@ Ast expression(Parser *parser) {
     return ast;
 }
 
-Ast expression_statement(Parser *parser) {
-    // TODO: Handle attribute-specifier-seequence
+Ast token_list(Parser *parser) {
     save_ctx(parser);
-    Ast value = expression(parser);
-    if (value.type == AST_Eof) {
+    Lex lex = next(parser);
+    if (lex.type == LEX_LParen) {
         ignore_ctx(parser);
+
+        Ast ast = {
+            .type = AST_LexList, .span = lex.span, .lexes = create_lexes(1)};
+        size_t paren_depth = 1;
+        size_t bracket_depth = 0;
+        size_t squigly_depth = 0;
+        while (paren_depth) {
+            lex = next(parser);
+            switch (lex.type) {
+            case LEX_Eof:
+                return (Ast){.type = AST_EofInvalid,
+                             .span = lex.span,
+                             .invalid = BadTokenList};
+            case LEX_LParen:
+                paren_depth += 1;
+                break;
+            case LEX_RParen:
+                paren_depth -= 1;
+                break;
+            case LEX_LBracket:
+                bracket_depth += 1;
+                break;
+            case LEX_RBracket:
+                bracket_depth -= 1;
+                break;
+            case LEX_LSquigly:
+                squigly_depth += 1;
+                break;
+            case LEX_RSquigly:
+                squigly_depth -= 1;
+                break;
+            default:
+                push_elem_vec(&ast.lexes, &lex);
+                break;
+            }
+        }
+
+        if (bracket_depth || squigly_depth) {
+            delete_vec(ast.lexes);
+            return (Ast){
+                .type = AST_Invalid, .span = lex.span, .invalid = BadTokenList};
+        }
+
+        return ast;
+    }
+    return_ctx(parser);
+    return (Ast){.type = AST_LexList, .span = lex.span, .lexes = 0};
+}
+
+// NOTE: Assumes that first [[ were already parsed
+Ast attribute_specifier(Parser *parser) {
+    Ast ast = {.type = AST_AttributeList, .expr = create_tree(1)};
+    int flag = 1;
+    while (flag) {
+        Lex lex = next(parser);
+        switch (lex.type) {
+        case LEX_Eof:
+            delete_ast(ast);
+            return (Ast){.type = AST_EofInvalid,
+                         .span = lex.span,
+                         .invalid = BadAttributeSpecifier};
+        case LEX_RBracket:
+            lex = next(parser);
+            if (lex.type == LEX_RBracket) {
+                save_ctx(parser);
+                lex = next(parser);
+                if (lex.type == LEX_LBracket) {
+                    lex = next(parser);
+                    if (lex.type == LEX_LBracket) {
+                        ignore_ctx(parser);
+                    } else {
+                        return_ctx(parser);
+                        flag = 0;
+                        ast.span = lex.span;
+                    }
+                } else {
+                    return_ctx(parser);
+                    flag = 0;
+                    ast.span = lex.span;
+                }
+            } else {
+                delete_ast(ast);
+                return (Ast){.type = AST_Invalid,
+                             .span = lex.span,
+                             .invalid = BadAttributeSpecifier};
+            }
+            break;
+        case LEX_Comma:
+            break;
+        case LEX_Identifier: {
+            Ast attr = {.type = AST_Attribute,
+                        .span = lex.span,
+                        .expr = create_tree(1)};
+            Ast id = {.type = AST_Identifier, .span = lex.span, .id = lex.id};
+            push_elem_vec(&attr.expr, &id);
+            save_ctx(parser);
+            lex = next(parser);
+            if (lex.type == LEX_ColonColon) {
+                ignore_ctx(parser);
+                lex = next(parser);
+                if (lex.type == LEX_Identifier) {
+                    id = (Ast){
+                        .type = AST_Identifier, .span = lex.span, .id = lex.id};
+                    push_elem_vec(&attr.expr, &id);
+                    Ast list = token_list(parser);
+                    if (list.lexes) {
+                        push_elem_vec(&attr.expr, &list);
+                        push_elem_vec(&ast.expr, &attr);
+                    } else {
+                        push_elem_vec(&ast.expr, &attr);
+                    }
+                    break;
+                }
+            }
+            return_ctx(parser);
+            Ast list = token_list(parser);
+            if (list.lexes) {
+                push_elem_vec(&attr.expr, &list);
+                push_elem_vec(&ast.expr, &attr);
+            } else {
+                push_elem_vec(&ast.expr, &attr);
+            }
+            break;
+        }
+        default:
+            delete_ast(ast);
+            return (Ast){.type = AST_Invalid,
+                         .span = lex.span,
+                         .invalid = BadAttributeSpecifier};
+        }
+    }
+    return ast;
+}
+
+// Check for [[ and backtrack if not
+int double_lbracket(Parser *parser) {
+    save_ctx(parser);
+    Lex lex = next(parser);
+    if (lex.type == LEX_LBracket) {
+        lex = next(parser);
+        if (lex.type == LEX_LBracket) {
+            ignore_ctx(parser);
+            return 1;
+        }
+    }
+    return_ctx(parser);
+    return 0;
+}
+
+Ast expression_statement(Parser *parser) {
+    save_ctx(parser);
+    Lex lex = next(parser);
+    if (lex.type == LEX_Semicolon) {
+        ignore_ctx(parser);
+        return (Ast){.type = AST_ExprStat, .span = lex.span, .expr = 0};
+    }
+    return_ctx(parser);
+
+    int attr_flag = double_lbracket(parser);
+    Ast attr;
+    if (attr_flag) {
+        attr = (Ast){.type = AST_Attributed, .expr = create_tree(2)};
+        Ast att = attribute_specifier(parser);
+        attr.span = att.span;
+        push_elem_vec(&attr.expr, &att);
+    }
+
+    Ast ast = {.type = AST_ExprStat, .span = lex.span, .expr = create_tree(1)};
+
+    Ast value = expression(parser);
+    if (value.type == AST_Eof || value.type == AST_EofInvalid) {
+        if (attr_flag) {
+            delete_ast(attr);
+        }
+        delete_ast(ast);
         return value;
     }
 
-    if (value.type == AST_Invalid) {
-        return_ctx(parser);
-        Lex lex = next(parser);
-        if (lex.type == LEX_Semicolon) {
-            return (Ast){.type = AST_ExprStat, .span = lex.span, .expr = 0};
-        }
+    push_elem_vec(&ast.expr, &value);
 
-        delete_ast(value);
-        return (Ast){.type = AST_Invalid,
-                     .span = lex.span,
-                     .invalid = BadSemicolonStatement};
-    }
-
-    Lex lex = next(parser);
+    lex = next(parser);
     if (lex.type == LEX_Semicolon) {
-        Ast ast = {
-            .type = AST_ExprStat, .span = lex.span, .expr = create_tree(1)};
-        push_elem_vec(&ast.expr, &value);
-        ignore_ctx(parser);
+        if (attr_flag) {
+            push_elem_vec(&attr.expr, &ast);
+            return attr;
+        }
         return ast;
     }
 
-    // TODO: Review this part
-    delete_ast(value);
-    ignore_ctx(parser);
+    if (attr_flag) {
+        delete_ast(attr);
+    }
+    delete_ast(ast);
     return (Ast){.type = AST_Invalid,
                  .span = lex.span,
                  .invalid = BadSemicolonStatement};
 }
 
-// Could add some abstractions, but this should be sufficient
 Ast unlabeled_statement(Parser *parser) {
-    // TODO: Optional attribute-specifier-sequence,
-    // excluding for expression_statement (it handles that itself)
     save_ctx(parser);
+
+    int attr_flag = double_lbracket(parser);
+    Ast attr, collect;
+
+    if (attr_flag) {
+        attr = (Ast){.type = AST_Attributed, .expr = create_tree(2)};
+        Ast att = attribute_specifier(parser);
+        attr.span = att.span;
+        push_elem_vec(&attr.expr, &att);
+    }
+
     Lex lex = next(parser);
     if (lex.type == LEX_LSquigly) {
         save_ctx(parser);
@@ -772,7 +946,8 @@ Ast unlabeled_statement(Parser *parser) {
         if (lex.type == LEX_RSquigly) {
             ignore_ctx(parser);
             ignore_ctx(parser);
-            return (Ast){.type = AST_CompStat, .span = lex.span, .expr = 0};
+            collect = (Ast){.type = AST_CompStat, .span = lex.span, .expr = 0};
+            goto Check_Attribute_Ret;
         }
         return_ctx(parser);
 
@@ -783,11 +958,14 @@ Ast unlabeled_statement(Parser *parser) {
         while (1) {
             // TODO: Declaration, label
             value = unlabeled_statement(parser);
-            if (value.type == AST_Eof) {
+            if (value.type == AST_Eof || value.type == AST_EofInvalid) {
+                if (attr_flag) {
+                    delete_ast(attr);
+                }
                 delete_ast(ast);
                 delete_ast(value);
                 ignore_ctx(parser);
-                return (Ast){.type = AST_Invalid,
+                return (Ast){.type = AST_EofInvalid,
                              .span = lex.span,
                              .invalid = BadCompoundStatement};
             }
@@ -798,7 +976,8 @@ Ast unlabeled_statement(Parser *parser) {
             if (lex.type == LEX_RSquigly) {
                 ignore_ctx(parser);
                 ignore_ctx(parser);
-                return ast;
+                collect = ast;
+                goto Check_Attribute_Ret;
             }
             return_ctx(parser);
         }
@@ -830,7 +1009,8 @@ Ast unlabeled_statement(Parser *parser) {
                         return_ctx(parser);
                     }
                     ignore_ctx(parser);
-                    return ast;
+                    collect = ast;
+                    goto Check_Attribute_Ret;
                 }
                 delete_ast(ast);
             }
@@ -849,7 +1029,8 @@ Ast unlabeled_statement(Parser *parser) {
                     push_elem_vec(&ast.expr, &block);
 
                     ignore_ctx(parser);
-                    return ast;
+                    collect = ast;
+                    goto Check_Attribute_Ret;
                 }
                 delete_ast(ast);
             }
@@ -868,7 +1049,8 @@ Ast unlabeled_statement(Parser *parser) {
                     push_elem_vec(&ast.expr, &block);
 
                     ignore_ctx(parser);
-                    return ast;
+                    collect = ast;
+                    goto Check_Attribute_Ret;
                 }
                 delete_ast(ast);
             }
@@ -890,7 +1072,8 @@ Ast unlabeled_statement(Parser *parser) {
                         lex = next(parser);
                         if (lex.type == LEX_Semicolon) {
                             ignore_ctx(parser);
-                            return ast;
+                            collect = ast;
+                            goto Check_Attribute_Ret;
                         }
                     }
                 }
@@ -920,7 +1103,8 @@ Ast unlabeled_statement(Parser *parser) {
                             push_elem_vec(&ast.expr, &block);
 
                             ignore_ctx(parser);
-                            return ast;
+                            collect = ast;
+                            goto Check_Attribute_Ret;
                         } else if (lex.type != LEX_Semicolon) {
                             break;
                         }
@@ -936,8 +1120,9 @@ Ast unlabeled_statement(Parser *parser) {
                 Lex sem = next(parser);
                 if (sem.type == LEX_Semicolon) {
                     ignore_ctx(parser);
-                    return (Ast){
+                    collect = (Ast){
                         .type = AST_GotoStat, .span = lex.span, .id = lex.id};
+                    goto Check_Attribute_Ret;
                 }
             }
             break;
@@ -945,14 +1130,16 @@ Ast unlabeled_statement(Parser *parser) {
             lex = next(parser);
             if (lex.type == LEX_Semicolon) {
                 ignore_ctx(parser);
-                return (Ast){.type = AST_ContinueStat, .span = lex.span};
+                collect = (Ast){.type = AST_ContinueStat, .span = lex.span};
+                goto Check_Attribute_Ret;
             }
             break;
         case KEY_break:
             lex = next(parser);
             if (lex.type == LEX_Semicolon) {
                 ignore_ctx(parser);
-                return (Ast){.type = AST_BreakStat, .span = lex.span};
+                collect = (Ast){.type = AST_BreakStat, .span = lex.span};
+                goto Check_Attribute_Ret;
             }
             break;
         case KEY_return:
@@ -961,8 +1148,9 @@ Ast unlabeled_statement(Parser *parser) {
             if (lex.type == LEX_Semicolon) {
                 ignore_ctx(parser);
                 ignore_ctx(parser);
-                return (Ast){
-                    .type = AST_ReturnStat, .span = lex.span, .expr = 0};
+                collect =
+                    (Ast){.type = AST_ReturnStat, .span = lex.span, .expr = 0};
+                goto Check_Attribute_Ret;
             }
             return_ctx(parser);
 
@@ -973,8 +1161,9 @@ Ast unlabeled_statement(Parser *parser) {
             lex = next(parser);
             if (lex.type == LEX_Semicolon) {
                 ignore_ctx(parser);
-                return (Ast){
+                collect = (Ast){
                     .type = AST_ReturnStat, .span = lex.span, .expr = tree};
+                goto Check_Attribute_Ret;
             }
             delete_tree(tree);
             break;
@@ -985,6 +1174,13 @@ Ast unlabeled_statement(Parser *parser) {
 
     return_ctx(parser);
     return expression_statement(parser);
+Check_Attribute_Ret:
+    if (attr_flag) {
+        push_elem_vec(&attr.expr, &collect);
+        return attr;
+    } else {
+        return collect;
+    }
 }
 
 // TODO: Have to be more careful with how Ast are freed throughout
@@ -1017,7 +1213,7 @@ void print_parser(Parser *parser) {
         printf(" %zu\n", *(size_t *)at_elem_vec(parser->idx_stack, i));
     }
     printf("context:\n");
-    print_lexes(parser->ctx);
+    print_lexes(parser->ctx, 0);
     printf("pp:\n");
     print_pp(&parser->pp);
     printf(")\n'");
@@ -1055,6 +1251,11 @@ Tree *create_tree(size_t capacity) { return create_vec(capacity, sizeof(Ast)); }
 // TODO: Fix spans, currently we just grab the last lex we used for the Ast
 void print_ast(Ast ast, int depth) {
     switch (ast.type) {
+    case AST_EofInvalid:
+        printf("%*c:Ast Eof Error %d: [%p, %zu, %zu, %zu]\n", depth, ' ',
+               ast.invalid, ast.span.start, ast.span.len, ast.span.row,
+               ast.span.col);
+        return;
     case AST_Invalid:
         printf("%*c:Ast Error %d: [%p, %zu, %zu, %zu]\n", depth, ' ',
                ast.invalid, ast.span.start, ast.span.len, ast.span.row,
@@ -1064,6 +1265,30 @@ void print_ast(Ast ast, int depth) {
         printf("%*c:Ast Eof: [%p, %zu, %zu, %zu]\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
         return;
+    case AST_LexList:
+        printf("%*c:LexList: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        if (ast.expr) {
+            print_lexes(ast.lexes, depth + 2);
+        }
+        printf("%*c::\n", depth, ' ');
+        return;
+    case AST_Attribute:
+        printf("%*c:Attribute: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
+    case AST_AttributeList:
+        printf("%*c:AttributeList: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        if (ast.expr) {
+            print_tree(ast.expr, depth + 2);
+        }
+        printf("%*c::\n", depth, ' ');
+        return;
+    case AST_Attributed:
+        printf("%*c:Attributed: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
     case AST_ExprStat:
         printf("%*c:Stat; [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.span.start,
                ast.span.len, ast.span.row, ast.span.col);
@@ -1332,6 +1557,7 @@ void print_tree(Tree *tree, int depth) {
 void delete_ast(Ast ast) {
     switch (ast.type) {
     case AST_Invalid:
+    case AST_EofInvalid:
     case AST_Eof:
     case AST_GotoStat:
     case AST_ContinueStat:
@@ -1340,6 +1566,12 @@ void delete_ast(Ast ast) {
     case AST_Constant:
     case AST_String:
         return;
+    case AST_LexList:
+        if (ast.lexes) {
+            delete_vec(ast.lexes);
+        }
+        return;
+    case AST_AttributeList:
     case AST_ExprStat:
     case AST_CompStat:
     case AST_IfStat:
@@ -1352,8 +1584,9 @@ void delete_ast(Ast ast) {
             delete_tree(ast.expr);
         }
         return;
+    case AST_Attribute:
+    case AST_Attributed:
     case AST_Expr:
-        delete_tree(ast.expr);
     case AST_AssignExpr:
     case AST_CondExpr:
     case AST_LogOrExpr:
