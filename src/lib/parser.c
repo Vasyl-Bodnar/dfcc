@@ -8,7 +8,10 @@
 #include <stdio.h>
 
 // NOTE: Could use more parsing abstractions (e.g. optional, check this token)
+// Some clean up might be required of more messy and fragile parts
+// Certain tricks are not used consistenly (e.g. "this rule failed")
 
+Ast statement(Parser *parser);
 Ast expression(Parser *parser);
 Ast assignment_expression(Parser *parser);
 Ast cast_expression(Parser *parser);
@@ -877,6 +880,72 @@ int double_lbracket(Parser *parser) {
     return 0;
 }
 
+Ast label(Parser *parser) {
+    save_ctx(parser);
+    int attr_flag = double_lbracket(parser);
+    Ast attr, collect;
+
+    if (attr_flag) {
+        attr = (Ast){.type = AST_Attributed, .expr = create_tree(2)};
+        Ast att = attribute_specifier(parser);
+        attr.span = att.span;
+        push_elem_vec(&attr.expr, &att);
+    }
+
+    Lex oth_lex, lex = next(parser);
+    switch (lex.type) {
+    case LEX_Keyword:
+        if (lex.key == KEY_case) {
+            Ast constant = conditional_expression(parser); // constant
+            lex = next(parser);
+            if (lex.type == LEX_Colon) {
+                collect = (Ast){.type = AST_CaseLabel,
+                                .span = lex.span,
+                                .expr = create_tree(1)};
+                push_elem_vec(&collect.expr, &constant);
+            } else {
+                collect = (Ast){.type = AST_Invalid,
+                                .span = lex.span,
+                                .invalid = BadCaseLabel};
+            }
+            break;
+        } else if (lex.key == KEY_default) {
+            lex = next(parser);
+            if (lex.type == LEX_Colon) {
+                collect = (Ast){.type = AST_DefaultLabel, .span = lex.span};
+            } else {
+                collect = (Ast){.type = AST_Invalid,
+                                .span = lex.span,
+                                .invalid = BadDefaultLabel};
+            }
+            break;
+        }
+    case LEX_Identifier:
+        oth_lex = next(parser);
+        if (oth_lex.type == LEX_Colon) {
+            collect =
+                (Ast){.type = AST_IdLabel, .span = lex.span, .id = lex.id};
+            break;
+        }
+    default:
+        if (attr_flag) {
+            delete_ast(attr);
+        }
+        return_ctx(parser);
+        return (Ast){
+            .type = AST_Invalid, .span = lex.span, .invalid = DidNotMatch};
+    }
+
+    if (attr_flag) {
+        push_elem_vec(&attr.expr, &collect);
+        ignore_ctx(parser);
+        return attr;
+    } else {
+        ignore_ctx(parser);
+        return collect;
+    }
+}
+
 Ast expression_statement(Parser *parser) {
     save_ctx(parser);
     Lex lex = next(parser);
@@ -956,8 +1025,11 @@ Ast unlabeled_statement(Parser *parser) {
                           .expr = create_tree(1)};
 
         while (1) {
-            // TODO: Declaration, label
-            value = unlabeled_statement(parser);
+            // TODO: Declaration
+            value = label(parser);
+            if (value.type == AST_Invalid && !value.invalid) {
+                value = unlabeled_statement(parser);
+            }
             if (value.type == AST_Eof || value.type == AST_EofInvalid) {
                 if (attr_flag) {
                     delete_ast(attr);
@@ -995,14 +1067,13 @@ Ast unlabeled_statement(Parser *parser) {
                 push_elem_vec(&ast.expr, &expr);
                 lex = next(parser);
                 if (lex.type == LEX_RParen) {
-                    // TODO: statement, not just unlabeled
                     // TODO: Else works like intended?
-                    Ast block = unlabeled_statement(parser);
+                    Ast block = statement(parser);
                     push_elem_vec(&ast.expr, &block);
                     save_ctx(parser);
                     lex = next(parser);
                     if (lex.type == LEX_Keyword && lex.key == KEY_else) {
-                        block = unlabeled_statement(parser);
+                        block = statement(parser);
                         push_elem_vec(&ast.expr, &block);
                         ignore_ctx(parser);
                     } else {
@@ -1025,7 +1096,7 @@ Ast unlabeled_statement(Parser *parser) {
                 push_elem_vec(&ast.expr, &expr);
                 lex = next(parser);
                 if (lex.type == LEX_RParen) {
-                    Ast block = unlabeled_statement(parser);
+                    Ast block = statement(parser);
                     push_elem_vec(&ast.expr, &block);
 
                     ignore_ctx(parser);
@@ -1045,7 +1116,7 @@ Ast unlabeled_statement(Parser *parser) {
                 push_elem_vec(&ast.expr, &expr);
                 lex = next(parser);
                 if (lex.type == LEX_RParen) {
-                    Ast block = unlabeled_statement(parser);
+                    Ast block = statement(parser);
                     push_elem_vec(&ast.expr, &block);
 
                     ignore_ctx(parser);
@@ -1056,7 +1127,7 @@ Ast unlabeled_statement(Parser *parser) {
             }
             break;
         case KEY_do: {
-            Ast block = unlabeled_statement(parser);
+            Ast block = statement(parser);
             lex = next(parser);
             if (lex.type == LEX_Keyword && lex.key == KEY_while) {
                 Ast ast = {.type = AST_DoWhileStat,
@@ -1099,7 +1170,7 @@ Ast unlabeled_statement(Parser *parser) {
                         push_elem_vec(&ast.expr, &expr);
                         lex = next(parser);
                         if (i == 2 && lex.type == LEX_RParen) {
-                            Ast block = unlabeled_statement(parser);
+                            Ast block = statement(parser);
                             push_elem_vec(&ast.expr, &block);
 
                             ignore_ctx(parser);
@@ -1172,6 +1243,9 @@ Ast unlabeled_statement(Parser *parser) {
         }
     }
 
+    if (attr_flag) {
+        delete_ast(attr);
+    }
     return_ctx(parser);
     return expression_statement(parser);
 Check_Attribute_Ret:
@@ -1183,9 +1257,23 @@ Check_Attribute_Ret:
     }
 }
 
+Ast statement(Parser *parser) {
+    Ast lab = label(parser);
+    if (lab.type == AST_Invalid && !lab.invalid) {
+        return unlabeled_statement(parser);
+    } else {
+        Ast labeled = {
+            .type = AST_Labeled, .span = lab.span, .expr = create_tree(2)};
+        push_elem_vec(&labeled.expr, &lab);
+        Ast stat = statement(parser);
+        push_elem_vec(&labeled.expr, &stat);
+        return labeled;
+    }
+}
+
 // TODO: Have to be more careful with how Ast are freed throughout
 Ast parse(Parser *parser) {
-    Ast ast = unlabeled_statement(parser);
+    Ast ast = statement(parser);
     reset_ctx(parser);
     return ast;
 }
@@ -1287,6 +1375,22 @@ void print_ast(Ast ast, int depth) {
         return;
     case AST_Attributed:
         printf("%*c:Attributed: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
+    case AST_IdLabel:
+        printf("%*c:IdLabel %zu: [%p, %zu, %zu, %zu] ::\n", depth, ' ', ast.id,
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        return;
+    case AST_CaseLabel:
+        printf("%*c:CaseLabel: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
+    case AST_DefaultLabel:
+        printf("%*c:DefaultLabel: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        return;
+    case AST_Labeled:
+        printf("%*c:Labeled: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
         break;
     case AST_ExprStat:
@@ -1559,6 +1663,8 @@ void delete_ast(Ast ast) {
     case AST_Invalid:
     case AST_EofInvalid:
     case AST_Eof:
+    case AST_IdLabel:
+    case AST_DefaultLabel:
     case AST_GotoStat:
     case AST_ContinueStat:
     case AST_BreakStat:
@@ -1572,6 +1678,8 @@ void delete_ast(Ast ast) {
         }
         return;
     case AST_AttributeList:
+    case AST_CaseLabel:
+    case AST_Labeled:
     case AST_ExprStat:
     case AST_CompStat:
     case AST_IfStat:

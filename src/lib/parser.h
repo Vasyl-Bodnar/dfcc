@@ -18,10 +18,14 @@ enum ast_type {
     AST_EofInvalid, // Bad Eof e.g. [
     AST_Eof,
     // Special
-    AST_LexList,       // general grouping e.g. a, b, c
-    AST_Attribute,     // atr, atr(), atr(a, b), xxx::atr, etc.
-    AST_AttributeList, // [[atr0]][[atr1, atr2]], [[atr0, atr1, atr2]], etc.
+    AST_LexList,       // general grouping e.g. a / b / c
+    AST_Attribute,     // atr / atr() / atr(a, b) / xxx::atr / etc.
+    AST_AttributeList, // [[atr0]][[atr1, atr2]] / [[atr0, atr1, atr2]] / etc.
     AST_Attributed,    // [[]] stat
+    AST_IdLabel,       // L1: / Error:
+    AST_CaseLabel,     // case X: / case 0: / case 1 | 2: / etc.
+    AST_DefaultLabel,  // default:
+    AST_Labeled,       // case 0: break; / etc.
     // Statement
     AST_ExprStat,
     AST_CompStat,
@@ -102,8 +106,12 @@ enum num_type {
 enum str_type { ASCII = 0, U8, U16, U32, Wide };
 
 enum inv_type {
+    DidNotMatch = 0,
     BadTokenList,
     BadAttributeSpecifier,
+    BadIdLabel,
+    BadCaseLabel,
+    BadDefaultLabel,
     BadPrimaryExpression,
     BadPrimaryExpressionRParen,
     BadExpression,

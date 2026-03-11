@@ -26,7 +26,12 @@
     } else
         1;
 
-    switch (5) { a + b; }
+    switch (5) {
+    case a > b:
+    case 0:
+        a + b;
+    default:
+    }
 
     while (6) {
         a + b;
@@ -42,8 +47,8 @@
         continue;
     }
 
-    goto x;
-    // x:
+    goto X;
+X:
 
     return 0;
 }
