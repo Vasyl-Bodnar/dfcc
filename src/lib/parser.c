@@ -1308,16 +1308,30 @@ Ast declaration(Parser *parser) {
                                        // it is stack allocated
                      .invalid = BadStaticAssertDecl};
     }
-
     return_ctx(parser);
-    return (Ast){.type = AST_EofInvalid,
-                 .span = lex.span,
-                 .invalid = BadStaticAssertDecl};
+
+    int attr_flag = double_lbracket(parser);
+    Ast attr, collect;
+
+    if (attr_flag) {
+        attr = (Ast){.type = AST_Attributed, .expr = create_tree(2)};
+        Ast att = attribute_specifier(parser);
+        attr.span = att.span;
+        push_elem_vec(&attr.expr, &att);
+    }
+
+    lex = next(parser);
+    if (lex.type == LEX_Semicolon && attr_flag) {
+        return attr;
+    }
+
+    // Dealing with types then
+
+    return (Ast){.type = AST_Eof, .span = lex.span};
 }
 
 Ast declarations(Parser *parser) {
-    Ast ast = {.type = AST_Declarations, .expr = create_tree(8)};
-    Ast decl;
+    Ast decl, ast = {.type = AST_Declarations, .expr = create_tree(8)};
     do {
         decl = declaration(parser);
         push_elem_vec(&ast.expr, &decl);
