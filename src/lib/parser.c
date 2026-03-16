@@ -1271,9 +1271,64 @@ Ast statement(Parser *parser) {
     }
 }
 
+Ast declaration(Parser *parser) {
+    save_ctx(parser);
+    Lex lex = next(parser);
+    if (lex.type == LEX_Keyword && lex.key == KEY_static_assert) {
+        ignore_ctx(parser);
+        Ast ast = {.type = AST_StaticAssertDecl,
+                   .span = lex.span,
+                   .expr = create_tree(2)};
+        lex = next(parser);
+        if (lex.type == LEX_LParen) {
+            Ast expr = conditional_expression(parser); // constant-expression
+            push_elem_vec(&ast.expr, &expr);
+            lex = next(parser);
+            if (lex.type == LEX_Comma) {
+                expr = primary_expression(parser);
+                if (expr.type != AST_String) {
+                    delete_ast(ast);
+                    return (Ast){.type = AST_Invalid,
+                                 .span = expr.span,
+                                 .invalid = BadStaticAssertStringDecl};
+                }
+                push_elem_vec(&ast.expr, &expr);
+                lex = next(parser);
+            }
+            if (lex.type == LEX_RParen) {
+                lex = next(parser);
+                if (lex.type == LEX_Semicolon) {
+                    return ast;
+                }
+            }
+        }
+        delete_ast(ast);
+        return (Ast){.type = AST_Invalid,
+                     .span = ast.span, // NOTE: It is valid to use ast's span as
+                                       // it is stack allocated
+                     .invalid = BadStaticAssertDecl};
+    }
+
+    return_ctx(parser);
+    return (Ast){.type = AST_EofInvalid,
+                 .span = lex.span,
+                 .invalid = BadStaticAssertDecl};
+}
+
+Ast declarations(Parser *parser) {
+    Ast ast = {.type = AST_Declarations, .expr = create_tree(8)};
+    Ast decl;
+    do {
+        decl = declaration(parser);
+        push_elem_vec(&ast.expr, &decl);
+    } while (decl.type != AST_Eof && decl.type != AST_EofInvalid);
+    ast.span = decl.span;
+    return ast;
+}
+
 // TODO: Have to be more careful with how Ast are freed throughout
 Ast parse(Parser *parser) {
-    Ast ast = statement(parser);
+    Ast ast = declarations(parser);
     reset_ctx(parser);
     return ast;
 }
@@ -1391,6 +1446,14 @@ void print_ast(Ast ast, int depth) {
         return;
     case AST_Labeled:
         printf("%*c:Labeled: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
+    case AST_StaticAssertDecl:
+        printf("%*c:StaticAssert: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
+    case AST_Declarations:
+        printf("%*c:Declarations: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
         break;
     case AST_ExprStat:
@@ -1694,6 +1757,8 @@ void delete_ast(Ast ast) {
         return;
     case AST_Attribute:
     case AST_Attributed:
+    case AST_StaticAssertDecl:
+    case AST_Declarations:
     case AST_Expr:
     case AST_AssignExpr:
     case AST_CondExpr:

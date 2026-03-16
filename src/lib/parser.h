@@ -26,6 +26,9 @@ enum ast_type {
     AST_CaseLabel,     // case X: / case 0: / case 1 | 2: / etc.
     AST_DefaultLabel,  // default:
     AST_Labeled,       // case 0: break; / etc.
+    // Declaration
+    AST_StaticAssertDecl,
+    AST_Declarations,
     // Statement
     AST_ExprStat,
     AST_CompStat,
@@ -112,6 +115,8 @@ enum inv_type {
     BadIdLabel,
     BadCaseLabel,
     BadDefaultLabel,
+    BadStaticAssertDecl,
+    BadStaticAssertStringDecl,
     BadPrimaryExpression,
     BadPrimaryExpressionRParen,
     BadExpression,
