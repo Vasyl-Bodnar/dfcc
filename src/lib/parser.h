@@ -31,6 +31,7 @@ enum ast_type {
     AST_FlatTypeSpecifier,
     AST_TypeSpecifier,
     AST_FunctionSpecifier,
+    AST_Specifiers,
     AST_InitDecl,
     AST_StaticAssertDecl,
     AST_Declarations,

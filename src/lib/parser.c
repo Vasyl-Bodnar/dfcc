@@ -1274,6 +1274,10 @@ Ast statement(Parser *parser) {
 Ast declaration(Parser *parser) {
     save_ctx(parser);
     Lex lex = next(parser);
+    if (lex.type == LEX_Eof) {
+        return (Ast){.type = AST_Eof, .span = lex.span};
+    }
+
     if (lex.type == LEX_Keyword && lex.key == KEY_static_assert) {
         ignore_ctx(parser);
         Ast ast = {.type = AST_StaticAssertDecl,
@@ -1332,7 +1336,9 @@ Ast declaration(Parser *parser) {
     collect =
         (Ast){.type = AST_InitDecl, .span = lex.span, .expr = create_tree(2)};
 
-    Ast ast;
+    Ast ast, specs = {.type = AST_Specifiers,
+                      .span = lex.span,
+                      .expr = create_tree(1)};
     do {
         lex = next(parser);
         switch (lex.type) {
@@ -1342,205 +1348,205 @@ Ast declaration(Parser *parser) {
                 ast = (Ast){.type = AST_StorageSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecAuto}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_constexpr:
                 ast = (Ast){.type = AST_StorageSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecConstexpr}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_extern:
                 ast = (Ast){.type = AST_StorageSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecExtern}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_register:
                 ast = (Ast){.type = AST_StorageSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecRegister}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_static:
                 ast = (Ast){.type = AST_StorageSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecStatic}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_thread_local:
                 ast = (Ast){.type = AST_StorageSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecThreadLocal}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_typedef:
                 ast = (Ast){.type = AST_StorageSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecTypedef}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_void:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecVoid}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_char:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecChar}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_short:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecShort}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_int:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecInt}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_long:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecLong}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_float:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecFloat}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_double:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecDouble}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_signed:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecSigned}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_unsigned:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecUnsigned}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY__BitInt: // TODO: Special
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecBitInt}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_bool:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecBool}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY__Complex:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecComplex}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY__Decimal32:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecDecimal32}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY__Decimal64:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecDecimal64}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY__Decimal128:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecDecimal128}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_struct: // TODO: Special
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecStruct}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_union: // TODO: Special
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecUnion}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_enum: // TODO: Special
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecEnum}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY__Atomic: // TODO: with or without (name)
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecAtomicWord}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_typeof: // TODO: Special
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecTypeof}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_typeof_unqual: // TODO: Special
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecTypeofUnqual}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_const:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecConst}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_restrict:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecRestrict}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_volatile:
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecVolatile}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_inline:
                 ast = (Ast){.type = AST_FunctionSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecInline}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY__Noreturn:
                 ast = (Ast){.type = AST_FunctionSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecNoReturn}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             case KEY_alignas: // TODO: Special
                 ast = (Ast){.type = AST_FlatTypeSpecifier,
                             .span = lex.span,
                             .spec = {0, SpecAlignas}};
-                push_elem_vec(&collect.expr, &ast);
+                push_elem_vec(&specs.expr, &ast);
                 break;
             default:
                 ast = (Ast){.type = AST_Invalid,
@@ -1553,17 +1559,19 @@ Ast declaration(Parser *parser) {
         case LEX_Eof:
             if (attr_flag) {
                 delete_ast(attr);
+                delete_ast(specs);
                 delete_ast(collect);
                 return (Ast){.type = AST_EofInvalid,
                              .span = lex.span,
                              .invalid = BadDeclaration};
-            }
-            if (collect.expr->length) {
+            } else if (collect.expr->length) {
+                delete_ast(specs);
                 delete_ast(collect);
                 return (Ast){.type = AST_EofInvalid,
                              .span = lex.span,
                              .invalid = BadDeclaration};
             } else {
+                delete_ast(specs);
                 delete_ast(collect);
                 return (Ast){.type = AST_Eof, .span = lex.span};
             }
@@ -1573,6 +1581,13 @@ Ast declaration(Parser *parser) {
             break;
         }
     } while (ast.type != AST_Invalid);
+
+    push_elem_vec(&collect.expr, &specs);
+
+    // init-declarator is not optional with attributes
+    if (lex.type == LEX_Semicolon && !attr_flag) {
+        return collect;
+    }
 
     if (lex.type == LEX_Semicolon) {
         if (attr_flag) {
@@ -1743,6 +1758,10 @@ void print_ast(Ast ast, int depth) {
                ast.spec.spec, ast.span.start, ast.span.len, ast.span.row,
                ast.span.col);
         return;
+    case AST_Specifiers:
+        printf("%*c:Specifiers: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
     case AST_InitDecl:
         printf("%*c:InitDecl: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
@@ -2060,6 +2079,7 @@ void delete_ast(Ast ast) {
     case AST_Attribute:
     case AST_Attributed:
     case AST_TypeSpecifier:
+    case AST_Specifiers:
     case AST_InitDecl:
     case AST_StaticAssertDecl:
     case AST_Declarations:
