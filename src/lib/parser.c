@@ -1290,7 +1290,7 @@ Ast declaration(Parser *parser) {
                     delete_ast(ast);
                     return (Ast){.type = AST_Invalid,
                                  .span = expr.span,
-                                 .invalid = BadStaticAssertStringDecl};
+                                 .invalid = BadStaticAssertStringDeclaration};
                 }
                 push_elem_vec(&ast.expr, &expr);
                 lex = next(parser);
@@ -1306,7 +1306,7 @@ Ast declaration(Parser *parser) {
         return (Ast){.type = AST_Invalid,
                      .span = ast.span, // NOTE: It is valid to use ast's span as
                                        // it is stack allocated
-                     .invalid = BadStaticAssertDecl};
+                     .invalid = BadStaticAssertDeclaration};
     }
     return_ctx(parser);
 
@@ -1320,14 +1320,275 @@ Ast declaration(Parser *parser) {
         push_elem_vec(&attr.expr, &att);
     }
 
+    save_ctx(parser);
     lex = next(parser);
     if (lex.type == LEX_Semicolon && attr_flag) {
+        ignore_ctx(parser);
         return attr;
     }
+    return_ctx(parser);
 
     // Dealing with types then
+    collect =
+        (Ast){.type = AST_InitDecl, .span = lex.span, .expr = create_tree(2)};
 
-    return (Ast){.type = AST_Eof, .span = lex.span};
+    Ast ast;
+    do {
+        lex = next(parser);
+        switch (lex.type) {
+        case LEX_Keyword:
+            switch (lex.key) {
+            case KEY_auto:
+                ast = (Ast){.type = AST_StorageSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecAuto}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_constexpr:
+                ast = (Ast){.type = AST_StorageSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecConstexpr}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_extern:
+                ast = (Ast){.type = AST_StorageSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecExtern}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_register:
+                ast = (Ast){.type = AST_StorageSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecRegister}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_static:
+                ast = (Ast){.type = AST_StorageSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecStatic}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_thread_local:
+                ast = (Ast){.type = AST_StorageSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecThreadLocal}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_typedef:
+                ast = (Ast){.type = AST_StorageSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecTypedef}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_void:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecVoid}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_char:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecChar}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_short:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecShort}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_int:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecInt}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_long:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecLong}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_float:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecFloat}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_double:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecDouble}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_signed:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecSigned}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_unsigned:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecUnsigned}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY__BitInt: // TODO: Special
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecBitInt}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_bool:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecBool}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY__Complex:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecComplex}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY__Decimal32:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecDecimal32}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY__Decimal64:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecDecimal64}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY__Decimal128:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecDecimal128}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_struct: // TODO: Special
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecStruct}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_union: // TODO: Special
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecUnion}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_enum: // TODO: Special
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecEnum}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY__Atomic: // TODO: with or without (name)
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecAtomicWord}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_typeof: // TODO: Special
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecTypeof}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_typeof_unqual: // TODO: Special
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecTypeofUnqual}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_const:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecConst}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_restrict:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecRestrict}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_volatile:
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecVolatile}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_inline:
+                ast = (Ast){.type = AST_FunctionSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecInline}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY__Noreturn:
+                ast = (Ast){.type = AST_FunctionSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecNoReturn}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            case KEY_alignas: // TODO: Special
+                ast = (Ast){.type = AST_FlatTypeSpecifier,
+                            .span = lex.span,
+                            .spec = {0, SpecAlignas}};
+                push_elem_vec(&collect.expr, &ast);
+                break;
+            default:
+                ast = (Ast){.type = AST_Invalid,
+                            .span = lex.span,
+                            .invalid = DidNotMatch};
+                break;
+            }
+            break;
+        // case LEX_Identifier: // NOTE: Non-context-free parsing here
+        case LEX_Eof:
+            if (attr_flag) {
+                delete_ast(attr);
+                delete_ast(collect);
+                return (Ast){.type = AST_EofInvalid,
+                             .span = lex.span,
+                             .invalid = BadDeclaration};
+            }
+            if (collect.expr->length) {
+                delete_ast(collect);
+                return (Ast){.type = AST_EofInvalid,
+                             .span = lex.span,
+                             .invalid = BadDeclaration};
+            } else {
+                delete_ast(collect);
+                return (Ast){.type = AST_Eof, .span = lex.span};
+            }
+        default:
+            ast = (Ast){
+                .type = AST_Invalid, .span = lex.span, .invalid = DidNotMatch};
+            break;
+        }
+    } while (ast.type != AST_Invalid);
+
+    if (lex.type == LEX_Semicolon) {
+        if (attr_flag) {
+            push_elem_vec(&attr.expr, &collect);
+            return attr;
+        }
+        return collect;
+    }
+
+    if (attr_flag) {
+        delete_ast(attr);
+    }
+    delete_ast(collect);
+    return (Ast){.type = AST_Invalid,
+                 .span = lex.span,
+                 .invalid = BadSemicolonDeclaration};
 }
 
 Ast declarations(Parser *parser) {
@@ -1460,6 +1721,30 @@ void print_ast(Ast ast, int depth) {
         return;
     case AST_Labeled:
         printf("%*c:Labeled: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.span.start, ast.span.len, ast.span.row, ast.span.col);
+        break;
+    case AST_StorageSpecifier:
+        printf("%*c:StorageSpecifier %d: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.spec.spec, ast.span.start, ast.span.len, ast.span.row,
+               ast.span.col);
+        return;
+    case AST_FlatTypeSpecifier:
+        printf("%*c:FlatTypeSpecifier %d: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.spec.spec, ast.span.start, ast.span.len, ast.span.row,
+               ast.span.col);
+        return;
+    case AST_TypeSpecifier:
+        printf("%*c:TypeSpecifier %d: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.spec.spec, ast.span.start, ast.span.len, ast.span.row,
+               ast.span.col);
+        break;
+    case AST_FunctionSpecifier:
+        printf("%*c:FunctionSpecifier %d: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
+               ast.spec.spec, ast.span.start, ast.span.len, ast.span.row,
+               ast.span.col);
+        return;
+    case AST_InitDecl:
+        printf("%*c:InitDecl: [%p, %zu, %zu, %zu] ::\n", depth, ' ',
                ast.span.start, ast.span.len, ast.span.row, ast.span.col);
         break;
     case AST_StaticAssertDecl:
@@ -1748,6 +2033,9 @@ void delete_ast(Ast ast) {
     case AST_Identifier:
     case AST_Constant:
     case AST_String:
+    case AST_StorageSpecifier:
+    case AST_FlatTypeSpecifier:
+    case AST_FunctionSpecifier:
         return;
     case AST_LexList:
         if (ast.lexes) {
@@ -1771,6 +2059,8 @@ void delete_ast(Ast ast) {
         return;
     case AST_Attribute:
     case AST_Attributed:
+    case AST_TypeSpecifier:
+    case AST_InitDecl:
     case AST_StaticAssertDecl:
     case AST_Declarations:
     case AST_Expr:

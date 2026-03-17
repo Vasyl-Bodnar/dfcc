@@ -27,6 +27,11 @@ enum ast_type {
     AST_DefaultLabel,  // default:
     AST_Labeled,       // case 0: break; / etc.
     // Declaration
+    AST_StorageSpecifier,
+    AST_FlatTypeSpecifier,
+    AST_TypeSpecifier,
+    AST_FunctionSpecifier,
+    AST_InitDecl,
     AST_StaticAssertDecl,
     AST_Declarations,
     // Statement
@@ -81,7 +86,7 @@ enum ast_type {
     AST_AccessExpr,
     AST_DerefAccessExpr,
     AST_PostIncExpr,
-    AST_PostDecExpr,
+    AST_PostDecExpr
 };
 
 enum num_type {
@@ -103,28 +108,10 @@ enum num_type {
     CharU8,
     CharU16,
     CharU32,
-    CharWide,
+    CharWide
 };
 
 enum str_type { ASCII = 0, U8, U16, U32, Wide };
-
-enum inv_type {
-    DidNotMatch = 0,
-    BadTokenList,
-    BadAttributeSpecifier,
-    BadIdLabel,
-    BadCaseLabel,
-    BadDefaultLabel,
-    BadStaticAssertDecl,
-    BadStaticAssertStringDecl,
-    BadPrimaryExpression,
-    BadPrimaryExpressionRParen,
-    BadExpression,
-    BadConditionalExpression,
-    BadSemicolonStatement,
-    BadCompoundStatement,
-    BadUnimplemented
-};
 
 enum assign_op {
     Assign = 0,
@@ -138,6 +125,64 @@ enum assign_op {
     AssignAnd,
     AssignXor,
     AssignOr
+};
+
+enum type_spec {
+    SpecAuto,
+    SpecConstexpr,
+    SpecExtern,
+    SpecRegister,
+    SpecStatic,
+    SpecThreadLocal,
+    SpecTypedef,
+    SpecInline,
+    SpecNoReturn,
+    SpecVoid,
+    SpecConst,
+    SpecRestrict,
+    SpecVolatile,
+    SpecAtomicWord,
+    SpecChar,
+    SpecShort,
+    SpecInt,
+    SpecLong,
+    SpecFloat,
+    SpecDouble,
+    SpecSigned,
+    SpecUnsigned,
+    SpecBitInt,
+    SpecBool,
+    SpecComplex,
+    SpecDecimal32,
+    SpecDecimal64,
+    SpecDecimal128,
+    SpecStruct,
+    SpecUnion,
+    SpecEnum,
+    SpecAtomicType,
+    SpecTypeof,
+    SpecTypeofUnqual,
+    SpecAlignas,
+};
+
+enum inv_type {
+    DidNotMatch = 0,
+    BadTokenList,
+    BadAttributeSpecifier,
+    BadIdLabel,
+    BadCaseLabel,
+    BadDefaultLabel,
+    BadSemicolonDeclaration,
+    BadDeclaration,
+    BadStaticAssertDeclaration,
+    BadStaticAssertStringDeclaration,
+    BadPrimaryExpression,
+    BadPrimaryExpressionRParen,
+    BadExpression,
+    BadConditionalExpression,
+    BadSemicolonStatement,
+    BadCompoundStatement,
+    BadUnimplemented
 };
 
 // Consider using a flat array and indexes for Ast
@@ -169,6 +214,10 @@ typedef struct Ast {
             Tree *expr;
             size_t id;
         } access;
+        struct {
+            Tree *expr;
+            enum type_spec spec;
+        } spec;
     };
 } Ast;
 
