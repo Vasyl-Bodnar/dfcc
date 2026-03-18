@@ -1355,7 +1355,7 @@ Ast decl_spec(Parser *parser, Lex key) {
         }
         delete_ast(ast);
         return (Ast){
-            .type = AST_Invalid, .span = key.span, .invalid = BadUnimplemented};
+            .type = AST_Invalid, .span = key.span, .invalid = BadBitIntType};
     }
     case KEY_bool:
         return (Ast){.type = AST_FlatTypeSpecifier,
@@ -1411,14 +1411,43 @@ Ast decl_spec(Parser *parser, Lex key) {
                      .span = key.span,
                      .spec = {0, SpecAtomicWord}};
     }
-    case KEY_typeof: // TODO: Special
-        return (Ast){.type = AST_FlatTypeSpecifier,
+    case KEY_typeof: { // TODO: Very Special,
+                       // requires distinction between types and ids
+        Ast expr, ast = (Ast){.type = AST_TypeSpecifier,
+                              .span = key.span,
+                              .spec = {create_tree(1), SpecTypeof}};
+        Lex lex = next(parser);
+        if (lex.type == LEX_LParen) {
+            expr = expression(parser);
+            push_elem_vec(&ast.expr, &expr);
+            lex = next(parser);
+            if (lex.type == LEX_RParen) {
+                return ast;
+            }
+        }
+        delete_ast(ast);
+        return (Ast){
+            .type = AST_Invalid, .span = key.span, .invalid = BadTypeofType};
+    }
+    case KEY_typeof_unqual: { // TODO: Very Special,
+                              // requires distinction between types and ids
+        Ast expr, ast = (Ast){.type = AST_TypeSpecifier,
+                              .span = key.span,
+                              .spec = {create_tree(1), SpecTypeofUnqual}};
+        Lex lex = next(parser);
+        if (lex.type == LEX_LParen) {
+            expr = expression(parser);
+            push_elem_vec(&ast.expr, &expr);
+            lex = next(parser);
+            if (lex.type == LEX_RParen) {
+                return ast;
+            }
+        }
+        delete_ast(ast);
+        return (Ast){.type = AST_Invalid,
                      .span = key.span,
-                     .spec = {0, SpecTypeof}};
-    case KEY_typeof_unqual: // TODO: Special
-        return (Ast){.type = AST_FlatTypeSpecifier,
-                     .span = key.span,
-                     .spec = {0, SpecTypeofUnqual}};
+                     .invalid = BadTypeofUnqualType};
+    }
     case KEY_const:
         return (Ast){.type = AST_FlatTypeSpecifier,
                      .span = key.span,
@@ -1439,10 +1468,24 @@ Ast decl_spec(Parser *parser, Lex key) {
         return (Ast){.type = AST_FunctionSpecifier,
                      .span = key.span,
                      .spec = {0, SpecNoReturn}};
-    case KEY_alignas: // TODO: Special
-        return (Ast){.type = AST_FlatTypeSpecifier,
-                     .span = key.span,
-                     .spec = {0, SpecAlignas}};
+    case KEY_alignas: { // TODO: Very Special,
+                        // requires distinction between types and ids
+        Ast expr, ast = (Ast){.type = AST_TypeSpecifier,
+                              .span = key.span,
+                              .spec = {create_tree(1), SpecAlignas}};
+        Lex lex = next(parser);
+        if (lex.type == LEX_LParen) {
+            expr = conditional_expression(parser); // constant-expression
+            push_elem_vec(&ast.expr, &expr);
+            lex = next(parser);
+            if (lex.type == LEX_RParen) {
+                return ast;
+            }
+        }
+        delete_ast(ast);
+        return (Ast){
+            .type = AST_Invalid, .span = key.span, .invalid = BadAlignasType};
+    }
     default:
         return (Ast){
             .type = AST_Invalid, .span = key.span, .invalid = DidNotMatch};

@@ -176,7 +176,7 @@ enum inv_type {
     BadSemicolonDeclaration,
     BadDeclaration,
     BadBitIntType,
-    BadAlignAsType,
+    BadAlignasType,
     BadTypeofType,
     BadTypeofUnqualType,
     BadTypeSpecList,
