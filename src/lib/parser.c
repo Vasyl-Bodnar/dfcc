@@ -1385,10 +1385,107 @@ Ast decl_spec(Parser *parser, Lex key) {
         return (Ast){.type = AST_FlatTypeSpecifier,
                      .span = key.span,
                      .spec = {0, SpecUnion}};
-    case KEY_enum: // TODO: Special
-        return (Ast){.type = AST_FlatTypeSpecifier,
-                     .span = key.span,
-                     .spec = {0, SpecEnum}};
+    case KEY_enum: {
+        Ast expr, ast = (Ast){.type = AST_TypeSpecifier,
+                              .span = key.span,
+                              .spec = {create_tree(1), SpecEnum}};
+        int id_flag = 0, attr_flag = double_lbracket(parser);
+        Ast attr;
+        if (attr_flag) {
+            attr = (Ast){.type = AST_Attributed, .expr = create_tree(2)};
+            Ast att = attribute_specifier(parser);
+            attr.span = att.span;
+            push_elem_vec(&attr.expr, &att);
+        }
+
+        save_ctx(parser);
+        Lex lex = next(parser);
+        if (lex.type == LEX_Identifier) {
+            ignore_ctx(parser);
+            expr =
+                (Ast){.type = AST_Identifier, .span = lex.span, .id = lex.id};
+            push_elem_vec(&ast.expr, &expr);
+            id_flag = 1;
+        } else {
+            return_ctx(parser);
+        }
+
+        save_ctx(parser);
+        lex = next(parser);
+        if (lex.type == LEX_Colon) {
+            ignore_ctx(parser);
+            expr = type_spec_list(parser);
+            push_elem_vec(&ast.expr, &expr);
+        } else {
+            return_ctx(parser);
+        }
+
+        save_ctx(parser);
+        lex = next(parser);
+        if (lex.type == LEX_LSquigly) {
+            ignore_ctx(parser);
+            expr = (Ast){
+                .type = AST_Expr, .span = lex.span, .expr = create_tree(1)};
+            do {
+                lex = next(parser);
+                switch (lex.type) {
+                case LEX_Identifier: {
+                    Ast id = {
+                        .type = AST_Identifier, .span = lex.span, .id = lex.id};
+                    if (double_lbracket(parser)) {
+                        Ast attr = (Ast){.type = AST_Attributed,
+                                         .expr = create_tree(2)};
+                        Ast att = attribute_specifier(parser);
+                        attr.span = att.span;
+                        push_elem_vec(&attr.expr, &att);
+                        push_elem_vec(&attr.expr, &id);
+                        push_elem_vec(&expr.expr, &attr);
+                    } else {
+                        push_elem_vec(&expr.expr, &id);
+                    }
+                    save_ctx(parser);
+                    lex = next(parser);
+                    if (lex.type == LEX_Equal) {
+                        ignore_ctx(parser);
+                        id = conditional_expression(
+                            parser); // constant-expression
+                        push_elem_vec(&expr.expr, &id);
+                    } else {
+                        return_ctx(parser);
+                    }
+                    lex.type = LEX_Invalid;
+                    break;
+                }
+                case LEX_Comma: // TODO: no skip commas
+                case LEX_RSquigly:
+                case LEX_Eof:
+                    break;
+                default:
+                    delete_ast(expr);
+                    delete_ast(ast);
+                    return (Ast){.type = AST_Invalid,
+                                 .span = key.span,
+                                 .invalid = BadEnumListType};
+                }
+            } while (lex.type != LEX_Eof && lex.type != LEX_RSquigly);
+
+            if (expr.expr->length && lex.type != LEX_Eof) {
+                push_elem_vec(&ast.expr, &expr);
+                if (attr_flag) {
+                    push_elem_vec(&attr.expr, &ast);
+                    return attr;
+                }
+                return ast;
+            }
+        } else if (!attr_flag && id_flag) {
+            return ast;
+        }
+        return_ctx(parser);
+
+        delete_ast(ast);
+        return (Ast){
+            .type = AST_Invalid, .span = key.span, .invalid = BadEnumType};
+    }
     case KEY__Atomic: {
         Ast expr, ast = (Ast){.type = AST_TypeSpecifier,
                               .span = key.span,

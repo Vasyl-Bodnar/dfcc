@@ -179,6 +179,8 @@ enum inv_type {
     BadAlignasType,
     BadTypeofType,
     BadTypeofUnqualType,
+    BadEnumType,
+    BadEnumListType,
     BadTypeSpecList,
     BadStaticAssertDeclaration,
     BadStaticAssertStringDeclaration,
